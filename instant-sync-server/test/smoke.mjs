@@ -6,6 +6,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { open, seal } from "./sealed-client.mjs";
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "instant-sync-"));
@@ -138,8 +140,32 @@ try {
   assert.ok(!fs.existsSync(walletDir), "wallet dir not removed");
   step("delete → 200, token revoked, wallet dir removed");
 
+  const att = await api("GET", `/v1/attestation?nonce=${"ab".repeat(32)}`);
+  assert.equal(att.status, 200);
+  assert.equal(att.json.attested, false);
+  assert.equal(att.json.document, null);
+  assert.equal((await api("GET", "/v1/attestation?nonce=zz")).status, 400);
+  const { box, stateKey } = await seal(att.json.publicKey, { ufvk: UFVK, birthday: 3_800_000 });
+  const sealedReg = await api("POST", "/v1/register", { body: { sealed: box } });
+  assert.equal(sealedReg.status, 201, JSON.stringify(sealedReg.json));
+  const sealedToken = sealedReg.json.token;
+  let opened = null;
+  for (let i = 0; i < 60; i++) {
+    const r = await api("GET", "/v1/state", { token: sealedToken });
+    assert.ok(r.json.sealed && !("balance" in r.json), "sealed account answered in plaintext");
+    opened = await open(stateKey, r.json.sealed);
+    if (opened.status === "ready") break;
+    await sleep(200);
+  }
+  assert.equal(opened.status, "ready");
+  assert.equal(opened.balance.ironwood_spendable, "150000000");
+  const tampered = { ...box, ct: Buffer.from(Buffer.from(box.ct, "base64").map((b, i) => (i === 0 ? b ^ 1 : b))).toString("base64") };
+  assert.equal((await api("POST", "/v1/register", { body: { sealed: tampered } })).status, 400);
+  await api("DELETE", "/v1/account", { token: sealedToken });
+  step("dev attestation (unattested key) → sealed register → sealed state; tampered box → 400");
+
   let limited = false;
-  let accepted = 1; // the first registration above
+  let accepted = 2; // the two registrations above
   for (let i = 0; i < 6 && !limited; i++) {
     const r = await api("POST", "/v1/register", { body: { ufvk: UFVK } });
     if (r.status === 201) accepted++;

@@ -8,6 +8,8 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 
+import { createEnclaveKey, sealState } from "./sealed.mjs";
+
 // ── Config ───────────────────────────────────────────────────────────────────
 const env = process.env;
 const num = (v, d) => (v === undefined || v === "" || Number.isNaN(Number(v)) ? d : Number(v));
@@ -29,7 +31,15 @@ export const config = {
   trustProxy: env.TRUST_PROXY === "1",
   // Match the local wallet service (1 confirmation on testnet) so balances reconcile.
   minConfirmations: num(env.BALANCE_MIN_CONFIRMATIONS, 1),
+  // Nitro Enclave mode: attestation documents come from the NSM via ATTEST_BIN, and
+  // plaintext viewing keys are refused (they would have crossed the operator's TLS proxy).
+  enclave: env.ENCLAVE === "1",
+  attestBin: env.ATTEST_BIN || "zeno-enclave-agent",
+  requireSealed: env.REQUIRE_SEALED !== undefined ? env.REQUIRE_SEALED === "1" : env.ENCLAVE === "1",
 };
+
+/** In-memory only. Its public key is bound into every attestation document. */
+const enclaveKey = createEnclaveKey();
 
 const MAX_BODY = 8 * 1024;
 const WALLETS = path.join(config.dataDir, "wallets");
@@ -70,6 +80,8 @@ function publicFields(a) {
     txs: a.txs,
     chainTipHeight: a.chainTipHeight,
     error: a.error,
+    // Needed to answer /v1/state after a restart. Same trust level as the UFVK in the wallet dir.
+    stateKey: a.stateKey ? a.stateKey.toString("base64") : null,
   };
 }
 
@@ -92,6 +104,7 @@ function load() {
       if (!fs.existsSync(path.join(WALLETS, row.id))) continue;
       accounts.set(row.id, {
         ...row,
+        stateKey: row.stateKey ? Buffer.from(row.stateKey, "base64") : null,
         status: row.initialized ? (row.lastSyncedAt ? "ready" : "syncing") : "error",
         error: row.initialized ? row.error ?? null : "Registration did not finish. Register again.",
         child: null,
@@ -238,6 +251,30 @@ function startWorker() {
   worker.unref();
 }
 
+// ── Attestation ──────────────────────────────────────────────────────────────
+/** Ask the NSM (via the enclave agent) for a document binding our key and the client's nonce. */
+function attest(nonceHex) {
+  return new Promise((resolve, reject) => {
+    const args = ["attest", "--nonce", nonceHex, "--public-key", enclaveKey.spki.toString("base64")];
+    const child = spawn(config.attestBin, args, { stdio: ["ignore", "pipe", "pipe"], shell: false });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (d) => (stdout += d));
+    child.stderr.on("data", (d) => (stderr += d));
+    const timer = setTimeout(() => child.kill("SIGKILL"), 10_000);
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      reject(new Error(`could not start attestation agent: ${error.message}`));
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      const doc = stdout.trim();
+      if (code === 0 && /^[A-Za-z0-9+/]+=*$/.test(doc)) resolve(doc);
+      else reject(new Error(redact(stderr.trim() || `attestation agent exit ${code}`)));
+    });
+  });
+}
+
 // ── Validation ───────────────────────────────────────────────────────────────
 export function validateUfvk(value) {
   if (typeof value !== "string") return "ufvk must be a string.";
@@ -332,6 +369,18 @@ async function handleRegister(req, res) {
     if (error.status === 413) res.setHeader("connection", "close");
     return send(res, error.status || 400, { error: error.status ? error.message : "Send JSON." });
   }
+  let stateKey = null;
+  if (body?.sealed !== undefined) {
+    try {
+      body = enclaveKey.open(body.sealed);
+    } catch {
+      return send(res, 400, { error: "Could not open the sealed request. Fetch a fresh attestation and retry." });
+    }
+    stateKey = typeof body?.stateKey === "string" ? Buffer.from(body.stateKey, "base64") : null;
+    if (!stateKey || stateKey.length !== 32) return send(res, 400, { error: "sealed request needs a 32-byte stateKey." });
+  } else if (config.requireSealed) {
+    return send(res, 400, { error: "This server only accepts viewing keys encrypted to its attested enclave key." });
+  }
   const problem = validateUfvk(body?.ufvk);
   if (problem) return send(res, 400, { error: problem });
   let birthday;
@@ -356,6 +405,7 @@ async function handleRegister(req, res) {
     txs: [],
     chainTipHeight: null,
     error: null,
+    stateKey,
     child: null,
     busy: false,
     queued: false,
@@ -376,7 +426,7 @@ async function handleRegister(req, res) {
 function handleState(req, res) {
   const a = authed(req);
   if (!a) return send(res, 401, { error: "Unknown or missing token." });
-  return send(res, 200, {
+  const state = {
     status: a.status,
     balance: a.balance,
     txs: a.txs,
@@ -386,7 +436,23 @@ function handleState(req, res) {
     firstSyncMs: a.firstSyncMs,
     lastSyncMs: a.lastSyncMs,
     error: a.error,
-  });
+  };
+  return send(res, 200, a.stateKey ? { sealed: sealState(a.stateKey, state) } : state);
+}
+
+async function handleAttestation(url, res) {
+  const nonce = url.searchParams.get("nonce") || "";
+  if (!/^(?:[0-9a-f]{2}){16,64}$/.test(nonce)) return send(res, 400, { error: "nonce must be 16-64 bytes of lowercase hex." });
+  if (!config.enclave) {
+    // Dev server: same encryption, no proof. Clients that pin measurements refuse this.
+    return send(res, 200, { attested: false, document: null, publicKey: enclaveKey.spki.toString("base64") });
+  }
+  try {
+    return send(res, 200, { attested: true, document: await attest(nonce) });
+  } catch (error) {
+    log("attestation failed:", error.message);
+    return send(res, 503, { error: "Attestation unavailable." });
+  }
 }
 
 function handleDelete(req, res) {
@@ -412,6 +478,7 @@ export function createServer() {
       if (req.method === "GET" && url.pathname === "/health") {
         return send(res, 200, { ok: true, accounts: accounts.size, queued: queue.length, running });
       }
+      if (req.method === "GET" && url.pathname === "/v1/attestation") return await handleAttestation(url, res);
       if (req.method === "POST" && url.pathname === "/v1/register") return await handleRegister(req, res);
       if (req.method === "GET" && url.pathname === "/v1/state") return handleState(req, res);
       if (req.method === "DELETE" && url.pathname === "/v1/account") return handleDelete(req, res);
@@ -431,7 +498,7 @@ function main() {
   startWorker();
   const server = createServer();
   server.listen(config.port, config.host, () => {
-    log(`instant-sync listening on ${config.host}:${config.port} (${accounts.size} accounts, lwd=${config.lwdServer})`);
+    log(`instant-sync listening on ${config.host}:${config.port} (${accounts.size} accounts, lwd=${config.lwdServer}, enclave=${config.enclave}, requireSealed=${config.requireSealed})`);
   });
   const stop = () => {
     clearInterval(worker);

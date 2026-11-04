@@ -8,5 +8,5 @@
 	}
 	# No access log: requests carry bearer tokens. Caddy redacts Authorization by default,
 	# but keeping logs off is simpler to reason about for v0.
-	reverse_proxy instant-sync:8790
+	reverse_proxy {$UPSTREAM:instant-sync:8790}
 }

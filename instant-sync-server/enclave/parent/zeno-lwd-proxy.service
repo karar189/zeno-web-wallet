@@ -1,0 +1,11 @@
+[Unit]
+Description=Instant Sync enclave -> lightwalletd (vsock 8443 -> testnet.zec.rocks:443)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/vsock-proxy 8443 testnet.zec.rocks 443 --config /etc/nitro_enclaves/vsock-proxy.yaml
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

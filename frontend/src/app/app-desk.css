@@ -112,8 +112,8 @@
 }
 
 .zeno-app .brand .zeno-mark-icon {
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
   flex: none;
 }
 
@@ -130,8 +130,8 @@
 }
 
 .zeno-app .mobile-brand .zeno-mark-icon {
-  width: 18px;
-  height: 18px;
+  width: 26px;
+  height: 26px;
 }
 
 .zeno-app .brand-caption {

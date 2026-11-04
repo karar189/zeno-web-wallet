@@ -1,0 +1,3 @@
+# /etc/nitro_enclaves/vsock-proxy.yaml: the only host the enclave may reach.
+allowlist:
+- {address: testnet.zec.rocks, port: 443}

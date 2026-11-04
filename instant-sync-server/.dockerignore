@@ -2,3 +2,5 @@ data
 node_modules
 test
 *.md
+enclave/out
+enclave/agent/target

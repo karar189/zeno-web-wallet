@@ -1,0 +1,8 @@
+{
+  "comment": "Written by instant-sync-server/enclave/build.sh. The client only talks to an enclave whose PCR0/1/2 match these values. null = no attested build published yet (dev servers only).",
+  "pcr0": null,
+  "pcr1": null,
+  "pcr2": null,
+  "nitroCli": null,
+  "sourceCommit": null
+}

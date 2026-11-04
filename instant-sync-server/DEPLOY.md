@@ -95,6 +95,34 @@ docker compose exec instant-sync zcash-devtool --help | head -5
 - Rotate the box: `docker compose down`, keep or drop the volume, `up -d`.
 - Mainnet stays refused (`ALLOW_MAINNET=0` is forced in compose).
 
-## Later: moving into a Nitro Enclave
+## Nitro Enclave deployment
 
-The server is a single process with a file-backed state dir and one outbound dependency (lightwalletd over TLS). To move it: run Node + devtool inside the enclave image (`nitro-cli build-enclave`), proxy lightwalletd over vsock, pass the UFVK over the attested channel instead of argv, and seal `/data` with a KMS key bound to the enclave's PCRs. The client would then verify the attestation document before calling `/v1/register`.
+Same instance (launched with enclaves enabled). This replaces the `instant-sync` container; Caddy stays on the parent.
+
+```bash
+sudo dnf install -y aws-nitro-enclaves-cli aws-nitro-enclaves-cli-devel socat jq
+sudo usermod -aG ne,docker ec2-user && newgrp ne
+sudo cp enclave/parent/allocator.yaml enclave/parent/vsock-proxy.yaml /etc/nitro_enclaves/
+sudo systemctl enable --now nitro-enclaves-allocator
+
+# 1. Reproducible build (pin both values; they are measured into PCR0)
+DEVTOOL_REF=0b3436bb8d235c67cd36b800cb45a7b1b489c415 ALLOWED_ORIGIN=https://<app-origin> ./enclave/build.sh
+#    commit enclave/measurements.json + frontend/.../enclave-measurements.json, then rebuild/redeploy the frontend
+
+# 2. Run
+sudo install -D enclave/out/instant-sync.eif /opt/zeno/instant-sync.eif
+sudo cp enclave/parent/*.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now zeno-lwd-proxy zeno-enclave zeno-vsock-in
+docker compose down                                   # stop the v0 container if running
+(cd enclave/parent && DOMAIN=sync.<your-domain> docker compose up -d)
+
+# 3. Check
+curl -s https://sync.<your-domain>/health
+curl -s "https://sync.<your-domain>/v1/attestation?nonce=$(openssl rand -hex 32)" | jq .attested   # true
+nitro-cli describe-enclaves | jq '.[0].Measurements'   # must equal enclave/measurements.json
+```
+
+Never run with `--debug-mode` in production: debug enclaves report all-zero PCRs, and clients refuse them. To see enclave logs while developing, build a separate debug EIF and run `nitro-cli console`.
+
+Every server change means a new build and new PCRs. Clients built with the old measurements refuse the new enclave until the frontend is redeployed with the new `enclave-measurements.json`. On first unlock after an update, clients re-register automatically.

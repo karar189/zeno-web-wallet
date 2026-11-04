@@ -1,0 +1,18 @@
+# Parent-side TLS for the enclave. Caddy sees only ciphertext from the app layer: viewing keys
+# are sealed to the enclave key and state is sealed to the client's key.
+services:
+  caddy:
+    image: caddy:2.8.4
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      UPSTREAM: 127.0.0.1:8790
+    volumes:
+      - ../../Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

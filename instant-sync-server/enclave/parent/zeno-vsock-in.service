@@ -1,0 +1,11 @@
+[Unit]
+Description=Instant Sync: 127.0.0.1:8790 -> enclave vsock 16:8790
+After=zeno-enclave.service
+Requires=zeno-enclave.service
+
+[Service]
+ExecStart=/usr/bin/socat TCP-LISTEN:8790,bind=127.0.0.1,fork,reuseaddr VSOCK-CONNECT:16:8790
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

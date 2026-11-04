@@ -237,7 +237,9 @@ function InstantSyncSetting() {
       detail={
         note ??
         (available
-          ? "Instant Sync shares your viewing key (never your spending key) with our sync server. Testnet beta."
+          ? TeeSync.requiresAttestation()
+            ? `Instant Sync encrypts your viewing key (never your spending key) to an AWS Nitro Enclave. Before sending, this app verifies the enclave's attestation against the published reproducible build${TeeSync.attestedPcr0() ? ` (PCR0 ${TeeSync.attestedPcr0()!.slice(0, 12)}…)` : ""}, so the server operator cannot read it. Testnet beta.`
+            : "Instant Sync shares your viewing key (never your spending key) with our sync server. This server is not attested: its operator can read the key. Testnet beta."
           : "Instant Sync is testnet only and needs NEXT_PUBLIC_INSTANT_SYNC_URL.")
       }
     >

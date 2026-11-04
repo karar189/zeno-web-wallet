@@ -1,0 +1,14 @@
+[Unit]
+Description=Instant Sync Nitro Enclave
+After=nitro-enclaves-allocator.service zeno-lwd-proxy.service
+Requires=nitro-enclaves-allocator.service zeno-lwd-proxy.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Never pass --debug-mode in production: debug enclaves report all-zero PCRs and clients refuse them.
+ExecStart=/usr/bin/nitro-cli run-enclave --eif-path /opt/zeno/instant-sync.eif --enclave-cid 16 --cpu-count 2 --memory 6144
+ExecStop=/usr/bin/nitro-cli terminate-enclave --all
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,19 @@
+[package]
+name = "zeno-enclave-agent"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "PID 1 helper inside the Instant Sync Nitro Enclave: NSM attestation, loopback, vsock bridges."
+
+[dependencies]
+aws-nitro-enclaves-nsm-api = "0.4"
+serde_bytes = "0.11"
+base64 = "0.22"
+vsock = "0.5"
+libc = "0.2"
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true
+panic = "abort"

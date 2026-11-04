@@ -1,0 +1,5 @@
+# /etc/nitro_enclaves/allocator.yaml on the parent (c6i.xlarge: 4 vCPU / 8 GiB).
+# The enclave holds the wallet DBs in RAM, so give it most of the memory.
+---
+memory_mib: 6144
+cpu_count: 2

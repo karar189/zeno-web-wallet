@@ -3,3 +3,5 @@ node_modules/
 .env
 bin/
 data-server.log
+enclave/out/
+enclave/agent/target/
