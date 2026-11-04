@@ -23,6 +23,7 @@ import {
 import { HonestyNotes } from "@/components/payments/honesty-notes";
 import { playSound } from "@/lib/sound";
 import { usePaymentStore } from "@/stores/payment-store";
+import { useTransport } from "@/features/transport/use-transport";
 
 export function ReviewPanel() {
   const router = useRouter();
@@ -36,6 +37,7 @@ export function ReviewPanel() {
     setKeepTracking,
     notice,
   } = usePaymentStore();
+  const { transport } = useTransport();
   const board = record ? deriveLifecycle(record) : null;
   const pool = record
     ? classifyTestnetRecipient(record.request.recipient)
@@ -51,6 +53,7 @@ export function ReviewPanel() {
     verified:
       Boolean(pool?.ok) &&
       (backendKind !== "live" || Boolean(record?.preparation)),
+    network: transport.kind,
   };
   const blockers = assessRequirements(facts, requirements);
 
@@ -170,6 +173,7 @@ export function ReviewPanel() {
             requirements={requirements}
             onChange={setRequirements}
             simulated={backendKind === "simulated"}
+            transport={transport}
           />
           <label className="consent-row">
             <input

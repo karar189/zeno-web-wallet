@@ -62,6 +62,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/wallet/transactions/:txid", get(transaction_status))
         .route("/api/wallet/history", get(wallet_history))
         .route("/api/wallet/session", get(session_status))
+        .route("/api/wallet/network", get(network_status))
         .route("/api/wallet/session/password", post(set_session_password))
         .route("/api/wallet/session/unlock", post(unlock_session))
         .route("/api/wallet/session/lock", post(lock_session))
@@ -141,6 +142,12 @@ fn locked_response() -> Response {
         )
             .into_response(),
     )
+}
+
+/// How this service reaches lightwalletd and the faucet. Not session guarded: it holds no
+/// wallet data, and the privacy review needs it before unlock.
+async fn network_status() -> Response {
+    no_store(Json(crate::network::status().await).into_response())
 }
 
 async fn session_status(State(state): State<AppState>, headers: HeaderMap) -> Response {
@@ -408,7 +415,7 @@ async fn audit_scan(
     require_approval(Some(request.approved))?;
     static SCANS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(1);
     let _permit = SCANS.try_acquire().map_err(|_| disclosure_conflict("An audit scan is already running. Try again when it finishes.".to_string()))?;
-    let report = tokio::time::timeout(std::time::Duration::from_secs(90), state.audit_viewing_key(&request.ufvk, request.birthday_height))
+    let report = tokio::time::timeout(std::time::Duration::from_secs(300), state.audit_viewing_key(&request.ufvk, request.birthday_height))
         .await.map_err(|_| disclosure_conflict("The read-only scan timed out. No complete balance was reported.".to_string()))?
         .map_err(disclosure_conflict)?;
     Ok(no_store(Json(report).into_response()))
@@ -1118,9 +1125,9 @@ fn status_json(chain: crate::config::Chain, txid: &str, report: StatusReport) ->
         report.txid.clone()
     };
     let host = if chain.is_main() {
-        "https://mainnet.zcashblockexplorer.com"
+        "https://cipherscan.app"
     } else {
-        "https://testnet.zcashblockexplorer.com"
+        "https://testnet.cipherscan.app"
     };
     json!({
         "txid": txid,
@@ -1128,11 +1135,11 @@ fn status_json(chain: crate::config::Chain, txid: &str, report: StatusReport) ->
         "blockHash": report.block_hash,
         "confirmations": report.confirmations,
         "explorer": {
-            "transaction": format!("{host}/transactions/{txid}"),
+            "transaction": format!("{host}/tx/{txid}"),
             "block": report.block_hash.as_ref().map(|hash| {
-                format!("{host}/blocks/{hash}")
+                format!("{host}/block/{hash}")
             }).or_else(|| report.mined_height.map(|height| {
-                format!("{host}/blocks/{height}")
+                format!("{host}/block/{height}")
             })),
         },
         "confirmation": ConfirmationEvidence {

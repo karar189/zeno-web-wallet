@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { TeeSync } from "@/features/instant-sync/client";
 import { usePreferredNetwork } from "@/features/network/use-preferred-network";
+import { useTransport } from "@/features/transport/use-transport";
 
 function SettingsRow({
   label,
@@ -167,6 +168,7 @@ export function SettingsScreen() {
           <SettingsRow label="Connection" detail={walletUrl}>
             <span className="settings-chip max-w-[9rem] truncate">{walletBackend}</span>
           </SettingsRow>
+          <NetworkPrivacySetting />
           <SettingsLink
             href="/settings/disclosure"
             label="Auditor view"
@@ -257,6 +259,39 @@ function InstantSyncSetting() {
       >
         {busy ? "…" : enabled ? "On" : "Off"}
       </button>
+    </SettingsRow>
+  );
+}
+
+function NetworkPrivacySetting() {
+  const { transport } = useTransport();
+  const chip =
+    transport.kind === "mixnet"
+      ? transport.name
+      : transport.kind === "proxy-down"
+        ? "Proxy down"
+        : transport.kind === "direct"
+          ? "Direct"
+          : "Unknown";
+  const detail =
+    transport.kind === "mixnet"
+      ? `Lightwalletd and faucet traffic goes through ${transport.name} (SOCKS5 at ${transport.proxy}). The lightwallet server sees the exit, not your IP. Name lookups, swap quotes and Instant Sync still connect directly.`
+      : transport.kind === "proxy-down"
+        ? `The wallet service is set to use ${transport.name} at ${transport.proxy}, but nothing is listening. It will not fall back to a direct connection: start nym-socks5-client to sync and send again.`
+        : transport.kind === "direct"
+          ? "Lightwalletd sees your IP address. To hide it, run nym-socks5-client (default port 1080) and restart the wallet service with WALLET_SOCKS5_PROXY=socks5h://127.0.0.1:1080."
+          : "Start the live wallet service to see how it reaches lightwalletd.";
+  return (
+    <SettingsRow label="Network privacy" detail={detail}>
+      <span
+        className={cn(
+          "settings-chip max-w-[9rem] truncate",
+          transport.kind === "mixnet" && "border-[#7ddc8b] text-[#7ddc8b]",
+          transport.kind === "proxy-down" && "border-[#E7A598] text-[#E7A598]",
+        )}
+      >
+        {chip}
+      </span>
     </SettingsRow>
   );
 }

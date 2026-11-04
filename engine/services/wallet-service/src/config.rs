@@ -55,6 +55,8 @@ pub struct Config {
     pub endpoint: Option<String>,
     pub birthday_height: Option<u32>,
     pub faucet_endpoint: String,
+    /// Optional SOCKS5 proxy (e.g. nym-socks5-client) for all outbound traffic.
+    pub socks5_proxy: Option<crate::network::Socks5Proxy>,
 }
 
 impl Config {
@@ -78,6 +80,17 @@ impl Config {
             .filter(|value| !value.is_empty())
             .unwrap_or_else(|| DEFAULT_FAUCET_ENDPOINT.to_string());
         let faucet_endpoint = parse_faucet_endpoint(&faucet_endpoint)?;
+        let socks5_proxy = std::env::var("WALLET_SOCKS5_PROXY")
+            .ok()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+            .map(|value| {
+                crate::network::parse_proxy(
+                    &value,
+                    std::env::var("WALLET_SOCKS5_PROXY_NAME").ok().as_deref(),
+                )
+            })
+            .transpose()?;
         Ok(Self {
             chain,
             bind,
@@ -85,6 +98,7 @@ impl Config {
             endpoint,
             birthday_height,
             faucet_endpoint,
+            socks5_proxy,
         })
     }
 }

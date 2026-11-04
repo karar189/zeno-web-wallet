@@ -1,6 +1,6 @@
 use std::process::ExitCode;
 
-use wallet_service::{router, AppState, Config};
+use wallet_service::{install_transport, router, AppState, Config};
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -11,6 +11,15 @@ async fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
+    // Before anything opens a connection: the transport is fixed for the process lifetime.
+    if let Some(proxy) = &config.socks5_proxy {
+        println!(
+            "Outbound traffic (lightwalletd, faucet) goes through the {} SOCKS5 proxy at {}. There is no direct fallback.",
+            proxy.name,
+            proxy.address()
+        );
+    }
+    install_transport(config.socks5_proxy.clone());
     let state = match AppState::open(
         config.chain,
         &config.data_dir,

@@ -7,8 +7,6 @@ import {
   getFaucetInfo,
   getWalletAddress,
   getWalletReadiness,
-  quoteShieldFunds,
-  sendShieldFunds,
   submitFaucetClaim,
   WalletServiceError,
 } from "@/features/faucet/client";
@@ -384,52 +382,6 @@ function HomeBody({
     }
   }
 
-  async function shield() {
-    if (mainnetPreview) {
-      setNotice(
-        "Mainnet preview refuses shield. Switch back to Zcash testnet.",
-      );
-      playSound("error");
-      return;
-    }
-    setActionBusy("shield");
-    setNotice(null);
-    try {
-      const quote = await quoteShieldFunds();
-      if (
-        !quote.quoteId ||
-        !quote.recipient ||
-        !quote.amountZatoshis ||
-        !quote.feeZatoshis
-      ) {
-        setNotice(quote.note);
-        playSound("error");
-        return;
-      }
-      const sent = await sendShieldFunds({
-        quoteId: quote.quoteId,
-        recipient: quote.recipient,
-        amountZatoshis: quote.amountZatoshis,
-        feeZatoshis: quote.feeZatoshis,
-      });
-      if (sent.outcome === "accepted" || sent.evidence?.reference) {
-        setNotice(
-          `Shield broadcast ${sent.evidence?.reference ?? "accepted"}.`,
-        );
-        playSound("success");
-        await refresh();
-        return;
-      }
-      setNotice(sent.message ?? "Shield was refused.");
-      playSound("error");
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Shield failed.");
-      playSound("error");
-    } finally {
-      setActionBusy(null);
-    }
-  }
-
   async function lock() {
     setActionBusy("lock");
     try {
@@ -457,11 +409,6 @@ function HomeBody({
       ? formatZat(instantBalance.transparent_spendable)
       : formatZat(readiness?.transparentSpendableZatoshis);
   const ironwood = !mainnetPreview && instant?.balance ? formatZat(instant.balance.ironwood_spendable) : null;
-  const canShield =
-    !mainnetPreview &&
-    readiness?.transparentSpendableZatoshis !== null &&
-    readiness?.transparentSpendableZatoshis !== undefined &&
-    readiness.transparentSpendableZatoshis !== "0";
 
   return (
     <div className="wallet-popup-stack">
@@ -488,7 +435,7 @@ function HomeBody({
           ) : (
             <CipherReveal text={shielded} />
           )}{" "}
-          <span>ZEC</span>
+          <span className="wallet-popup-unit">ZEC</span>
         </p>
         <p className="wallet-popup-sub">
           {mainnetPreview
@@ -642,24 +589,15 @@ function HomeBody({
           <Shield size={16} />
           {actionBusy === "faucet" ? "…" : "Faucet"}
         </button>
-        <button
-          type="button"
-          className="wallet-popup-action"
-          disabled={!canShield || actionBusy !== null}
-          onClick={() => void shield()}
-        >
-          <Shield size={16} />
-          {actionBusy === "shield" ? "…" : "Shield"}
-        </button>
+        <Link href="/swap" className="wallet-popup-action" onClick={onClose}>
+          <ArrowLeftRight size={16} />
+          Swap
+        </Link>
       </div>
-
-      <Link className="wallet-popup-link" href="/swap" onClick={onClose}>
-        <ArrowLeftRight size={14} /> Trade ZEC for USDC, SOL, ETH, or BTC
-      </Link>
 
       {address?.transparentAddress && !mainnetPreview ? (
         <Link
-          className="wallet-popup-link"
+          className="wallet-popup-white"
           href={`/pay/send?request=${encodeURIComponent(`zcash:${address.transparentAddress}`)}`}
           onClick={onClose}
         >
@@ -674,7 +612,7 @@ function HomeBody({
       ) : (
         <p className="wallet-popup-muted">
           {mainnetPreview
-            ? "Mainnet preview · faucet, shield, and send stay on testnet."
+            ? "Mainnet preview · faucet and send stay on testnet."
             : "Testnet only. Transparent sends need an explicit privacy opt-out on review."}
         </p>
       )}

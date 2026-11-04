@@ -19,6 +19,7 @@ import { readStoredClaim } from "@/features/faucet/storage";
 import type { WalletHistoryTx } from "@/features/faucet/types";
 import { formatZatoshis } from "@/features/payments/amount";
 import {
+  currentExplorerUrl,
   looksLikeTxid,
   transactionExplorerUrl,
 } from "@/features/payments/explorer";
@@ -286,9 +287,9 @@ export function ActivityPlaceholder({
             record.submission?.reference ||
             null;
           const txHref =
-            record.chain?.explorer.transaction ||
+            currentExplorerUrl(record.chain?.explorer.transaction) ||
             (looksLikeTxid(txid) ? transactionExplorerUrl(txid) : null);
-          const blockHref = record.chain?.explorer.block ?? null;
+          const blockHref = currentExplorerUrl(record.chain?.explorer.block);
           return (
             <div className="activity-row" key={record.id}>
               <Shield size={19} className="text-[#ffc14a]" />

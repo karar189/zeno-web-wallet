@@ -1,6 +1,10 @@
 "use client";
 
 import { TokenMark } from "@/components/trade/token-mark";
+import {
+  AdvancedToggle,
+  useAdvancedView,
+} from "@/components/ui/advanced-toggle";
 import { PrivacyPreview } from "@/components/privacy/privacy-preview";
 import {
   chainLabel,
@@ -18,10 +22,7 @@ import {
 } from "@/features/guard/policy";
 import type { DepositQuote, TradeQuote } from "@/features/trade/quote";
 import { sendMainnetDeposit } from "@/features/trade/execute";
-import {
-  isTerminalSwapStatus,
-  type SwapStatus,
-} from "@/features/trade/status";
+import { isTerminalSwapStatus, type SwapStatus } from "@/features/trade/status";
 import { getWalletAddress } from "@/features/faucet/client";
 import { usePreferredNetwork } from "@/features/network/use-preferred-network";
 import {
@@ -58,6 +59,7 @@ function specFromList(
 export function SwapWorkspace() {
   const params = useSearchParams();
   const { network } = usePreferredNetwork();
+  const [advanced] = useAdvancedView();
   const requested = findSpec(params.get("chain") ?? "", params.get("to") ?? "");
   const [tokens, setTokens] = useState<TradeListing[]>(fallbackListings());
   const [pay, setPay] = useState<TradeSpec>(fallbackListings()[0]);
@@ -66,9 +68,8 @@ export function SwapWorkspace() {
   );
   const [amount, setAmount] = useState("0.1");
   const [consent, setConsent] = useState(false);
-  const [requirements, setRequirements] = useState<PrivacyRequirements>(
-    DEFAULT_REQUIREMENTS,
-  );
+  const [requirements, setRequirements] =
+    useState<PrivacyRequirements>(DEFAULT_REQUIREMENTS);
   const [picker, setPicker] = useState<"pay" | "receive" | null>(null);
   const [query, setQuery] = useState("");
   const [quote, setQuote] = useState<TradeQuote | null>(null);
@@ -136,9 +137,7 @@ export function SwapWorkspace() {
           { cache: "no-store", signal: AbortSignal.timeout(15000) },
         );
         const body = (await response.json().catch(() => null)) as
-          | SwapStatus
-          | { message?: string }
-          | null;
+          SwapStatus | { message?: string } | null;
         if (cancelled) return;
         if (!response.ok || !body || !("status" in body)) {
           timer = setTimeout(() => void poll(), 8000);
@@ -213,7 +212,9 @@ export function SwapWorkspace() {
       setNow(Date.now());
     } catch (caught) {
       setError(
-        caught instanceof Error ? caught.message : "Price unavailable. Try again.",
+        caught instanceof Error
+          ? caught.message
+          : "Price unavailable. Try again.",
       );
     } finally {
       setBusy(false);
@@ -251,11 +252,14 @@ export function SwapWorkspace() {
         signal: AbortSignal.timeout(35000),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message ?? "Deposit unavailable.");
+      if (!response.ok)
+        throw new Error(result.message ?? "Deposit unavailable.");
       setDeposit(result);
     } catch (caught) {
       setError(
-        caught instanceof Error ? caught.message : "Deposit unavailable. Try again.",
+        caught instanceof Error
+          ? caught.message
+          : "Deposit unavailable. Try again.",
       );
     } finally {
       setBusy(false);
@@ -301,7 +305,7 @@ export function SwapWorkspace() {
   );
 
   return (
-    <div className="workspace-page">
+    <div className="workspace-page single-flow">
       <div className="page-intro">
         <span className="eyebrow">Trade</span>
         <h1>
@@ -309,13 +313,21 @@ export function SwapWorkspace() {
           <br />
           <span>for another token.</span>
         </h1>
-        <p>
-          Live NEAR Intents prices, then a real mainnet ZEC deposit when you
-          confirm. Testnet can price the pair but cannot fund the swap.
-        </p>
+        {advanced ? (
+          <p>
+            Live NEAR Intents prices, then a real mainnet ZEC deposit when you
+            confirm. Testnet can price the pair but cannot fund the swap.
+          </p>
+        ) : null}
+      </div>
+      <div className="flow-toolbar">
+        <AdvancedToggle />
       </div>
       <div className="route-layout">
-        <form className="surface swap-form" onSubmit={(event) => void submit(event)}>
+        <form
+          className="surface swap-form"
+          onSubmit={(event) => void submit(event)}
+        >
           <div className="section-heading">
             <h2>Trade</h2>
             <span className="network-pill">Mainnet price</span>
@@ -409,12 +421,17 @@ export function SwapWorkspace() {
           <button className="primary-action" disabled={busy || !consent}>
             {busy ? "Getting price…" : quote ? "Refresh price" : "Get price"}
           </button>
-          <p className="form-footnote">
-            {network === "mainnet" && pay.symbol === "ZEC"
-              ? "A price does not move ZEC. The deposit below is a separate, confirmed payment."
-              : "This price does not move ZEC. Switch the header menu to Zcash mainnet to send a swap."}
-          </p>
-          {network === "mainnet" && pay.symbol === "ZEC" && quote && !expired ? (
+          {advanced ? (
+            <p className="form-footnote">
+              {network === "mainnet" && pay.symbol === "ZEC"
+                ? "A price does not move ZEC. The deposit below is a separate, confirmed payment."
+                : "This price does not move ZEC. Switch the header menu to Zcash mainnet to send a swap."}
+            </p>
+          ) : null}
+          {network === "mainnet" &&
+          pay.symbol === "ZEC" &&
+          quote &&
+          !expired ? (
             <div className="amount-field">
               <span>Destination address</span>
               <input
@@ -441,8 +458,8 @@ export function SwapWorkspace() {
               </small>
               {!privacyAllowsExit ? (
                 <p className="inline-error" role="status">
-                  Relax the privacy requirements on the right before preparing a
-                  public DeFi exit.
+                  Relax the privacy requirements below before preparing a public
+                  DeFi exit.
                 </p>
               ) : null}
               <button
@@ -464,9 +481,9 @@ export function SwapWorkspace() {
             <div className="quote-result">
               <p>
                 Send {deposit.payAmount} ZEC to {deposit.depositAddress}. You
-                receive at least {deposit.minimumReceive} {deposit.receiveSymbol}{" "}
-                on {chainLabel(deposit.receiveChain)}. Refunds return to{" "}
-                {deposit.refundTo}.
+                receive at least {deposit.minimumReceive}{" "}
+                {deposit.receiveSymbol} on {chainLabel(deposit.receiveChain)}.
+                Refunds return to {deposit.refundTo}.
               </p>
               <p className="form-footnote">
                 Deposit window open until{" "}
@@ -490,7 +507,10 @@ export function SwapWorkspace() {
                 type="button"
                 className="primary-action"
                 disabled={
-                  !spendConfirmed || sending || !privacyAllowsExit || Boolean(sent)
+                  !spendConfirmed ||
+                  sending ||
+                  !privacyAllowsExit ||
+                  Boolean(sent)
                 }
                 onClick={() => void broadcastDeposit()}
               >
@@ -502,13 +522,14 @@ export function SwapWorkspace() {
               </button>
               {sent ? (
                 <p>
-                  Broadcast {sent.length ? sent.join(", ") : "accepted"}. Tracking
-                  1Click status below.
+                  Broadcast {sent.length ? sent.join(", ") : "accepted"}.
+                  Tracking 1Click status below.
                 </p>
               ) : null}
               {swapStatus ? (
                 <p role="status">
-                  1Click · {swapStatus.status.replaceAll("_", " ").toLowerCase()}
+                  1Click ·{" "}
+                  {swapStatus.status.replaceAll("_", " ").toLowerCase()}
                   {" — "}
                   {swapStatus.note}
                 </p>
@@ -517,12 +538,16 @@ export function SwapWorkspace() {
           ) : null}
         </form>
         <div className="space-y-5">
-          <PrivacyPreview
-            facts={facts}
-            requirements={requirements}
-            onChange={setRequirements}
-            sharingAddresses={Boolean(deposit) || destination.trim().length > 0}
-          />
+          {advanced || quote || deposit ? (
+            <PrivacyPreview
+              facts={facts}
+              requirements={requirements}
+              onChange={setRequirements}
+              sharingAddresses={
+                Boolean(deposit) || destination.trim().length > 0
+              }
+            />
+          ) : null}
           {quote ? (
             <section className="surface quote-result" aria-live="polite">
               <div className="section-heading">
@@ -565,25 +590,29 @@ export function SwapWorkspace() {
               </p>
             </section>
           ) : null}
-          <div className="boundary-note">
-            <CircleAlert size={20} />
-            <div>
-              <strong>
-                {network === "mainnet" && pay.symbol === "ZEC"
-                  ? "A deposit spends real ZEC"
-                  : "Pricing only until mainnet"}
-              </strong>
-              <p>
-                {network === "mainnet" && pay.symbol === "ZEC"
-                  ? "Prepare deposit asks 1Click for a one-time transparent address. ZEC moves only after you confirm Send ZEC deposit. Relax the privacy requirements first."
-                  : "These prices are mainnet pairs. Switch to Zcash mainnet, unlock that wallet, and relax the privacy requirements before a deposit can be prepared."}
-              </p>
-              <Link href="/pay/send">
-                {network === "mainnet" ? "Send shielded ZEC" : "Send shielded testnet ZEC"}{" "}
-                <ArrowUpRight size={14} />
-              </Link>
+          {advanced ? (
+            <div className="boundary-note">
+              <CircleAlert size={20} />
+              <div>
+                <strong>
+                  {network === "mainnet" && pay.symbol === "ZEC"
+                    ? "A deposit spends real ZEC"
+                    : "Pricing only until mainnet"}
+                </strong>
+                <p>
+                  {network === "mainnet" && pay.symbol === "ZEC"
+                    ? "Prepare deposit asks 1Click for a one-time transparent address. ZEC moves only after you confirm Send ZEC deposit. Relax the privacy requirements first."
+                    : "These prices are mainnet pairs. Switch to Zcash mainnet, unlock that wallet, and relax the privacy requirements before a deposit can be prepared."}
+                </p>
+                <Link href="/pay/send">
+                  {network === "mainnet"
+                    ? "Send shielded ZEC"
+                    : "Send shielded testnet ZEC"}{" "}
+                  <ArrowUpRight size={14} />
+                </Link>
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </div>
       {picker ? (

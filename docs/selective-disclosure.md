@@ -252,4 +252,4 @@ A real visibility test still needs funding: send testnet TAZ only to the disclos
 
 ## Read-only scanner
 
-The app now has an independent auditor workspace at `/audit`. It imports a testnet full viewing key as a ViewOnly account in a separate in-memory database; it does not open the spending wallet. See [Privacy workspace](./privacy-workspace.md#independent-auditor-scanner) for consent, data handling, the 2,000-block scan limit, and verification limitations. Exporting remains account-level visibility, not transaction-specific disclosure.
+The app now has an independent auditor workspace at `/audit`. It imports a testnet full viewing key as a ViewOnly account in a separate in-memory database; it does not open the spending wallet. See [Privacy workspace](./privacy-workspace.md#independent-auditor-scanner) for consent, data handling, the 50,000-block scan limit, the accountant CSV export, and verification limitations. Exporting remains account-level visibility, not transaction-specific disclosure.

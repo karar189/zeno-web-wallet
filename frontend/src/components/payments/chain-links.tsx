@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  currentExplorerUrl,
   looksLikeTxid,
   transactionExplorerUrl,
 } from "@/features/payments/explorer";
@@ -19,6 +20,8 @@ export function ChainLinks({ submission, chain }: Props) {
     chain?.txid,
   ].filter((value): value is string => Boolean(value)));
 
+  const blockHref = currentExplorerUrl(chain?.explorer.block);
+
   if (!references.length && !chain?.blockHash && chain?.minedHeight == null) {
     return null;
   }
@@ -30,7 +33,7 @@ export function ChainLinks({ submission, chain }: Props) {
         {references.map((value) => {
           const href = looksLikeTxid(value)
             ? chain?.explorer.transaction && chain.txid === value
-              ? chain.explorer.transaction
+              ? currentExplorerUrl(chain.explorer.transaction)
               : transactionExplorerUrl(value)
             : null;
           return (
@@ -63,20 +66,20 @@ export function ChainLinks({ submission, chain }: Props) {
                 ? ` · ${chain.confirmations} confirmation${chain.confirmations === 1 ? "" : "s"}`
                 : ""}
             </p>
-            {chain.explorer.block && chain.blockHash ? (
+            {blockHref && chain.blockHash ? (
               <a
                 className="chain-link"
-                href={chain.explorer.block}
+                href={blockHref}
                 target="_blank"
                 rel="noreferrer"
               >
                 <span className="font-mono text-sm break-all">{chain.blockHash}</span>
                 <ExternalLink size={13} />
               </a>
-            ) : chain.explorer.block ? (
+            ) : blockHref ? (
               <a
                 className="chain-link"
-                href={chain.explorer.block}
+                href={blockHref}
                 target="_blank"
                 rel="noreferrer"
               >

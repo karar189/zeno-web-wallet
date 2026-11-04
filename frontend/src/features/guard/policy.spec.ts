@@ -43,4 +43,17 @@ describe("privacy requirements", () => {
       ),
     ).toEqual([]);
   });
+  it("requires a running mixnet proxy only when asked", () => {
+    const facts = { receiver: "shielded" as const, provider: false, verified: true };
+    const strict = { ...DEFAULT_REQUIREMENTS, mixnetOnly: true };
+    expect(assessRequirements({ ...facts, network: "direct" }, DEFAULT_REQUIREMENTS)).toEqual([]);
+    expect(assessRequirements({ ...facts, network: "mixnet" }, strict)).toEqual([]);
+    expect(assessRequirements({ ...facts, network: "direct" }, strict)).toEqual([
+      "Wallet traffic goes directly to lightwalletd, not through Nym.",
+    ]);
+    expect(assessRequirements({ ...facts, network: "proxy-down" }, strict)).toEqual([
+      "The Nym proxy is configured but not running.",
+    ]);
+    expect(assessRequirements(facts, strict)).toHaveLength(1);
+  });
 });

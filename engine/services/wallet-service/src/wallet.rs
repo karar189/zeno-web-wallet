@@ -3325,9 +3325,7 @@ fn save_journal(path: &Path, journal: &Journal) -> Result<(), String> {
 async fn connect(
     endpoint: &str,
 ) -> Result<CompactTxStreamerClient<tonic::transport::Channel>, String> {
-    CompactTxStreamerClient::connect(endpoint.to_string())
-        .await
-        .map_err(|error| format!("Could not connect to LIGHTWALLETD_ENDPOINT: {error}"))
+    crate::network::lightwalletd(endpoint).await
 }
 
 async fn ensure_chain(
@@ -3543,6 +3541,19 @@ fn display_txid(txid: TxId) -> String {
     txid.to_string()
 }
 
+/// `received` | `sent` | `shield` | `other`, from a `v_transactions` row.
+pub(crate) fn history_kind(is_shielding: bool, pool_crossing: Option<i64>, delta: i64) -> &'static str {
+    if is_shielding || pool_crossing.is_some() {
+        "shield"
+    } else if delta > 0 {
+        "received"
+    } else if delta < 0 {
+        "sent"
+    } else {
+        "other"
+    }
+}
+
 fn list_wallet_history(
     db_path: &Path,
     account_id: AccountUuid,
@@ -3621,15 +3632,7 @@ fn list_wallet_history(
             .try_into()
             .map_err(|_| "A history row had an invalid transaction id.".to_string())?;
         let txid = TxId::from_bytes(txid_array);
-        let kind = if is_shielding || pool_crossing.is_some() {
-            "shield"
-        } else if delta > 0 {
-            "received"
-        } else if delta < 0 {
-            "sent"
-        } else {
-            "other"
-        };
+        let kind = history_kind(is_shielding, pool_crossing, delta);
         entries.push(HistoryEntry {
             txid: display_txid(txid),
             mined_height,

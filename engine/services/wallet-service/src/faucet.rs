@@ -166,9 +166,10 @@ impl ClaimReport {
 impl FaucetClient {
     pub fn new(endpoint: &str) -> Result<Self, String> {
         let endpoint = parse_faucet_endpoint(endpoint)?;
-        let http = Client::builder()
+        let builder = Client::builder()
             .timeout(REQUEST_TIMEOUT)
-            .user_agent("zeno-wallet-service/0.1")
+            .user_agent("zeno-wallet-service/0.1");
+        let http = crate::network::http_client(builder)?
             .build()
             .map_err(|error| format!("Could not build the faucet HTTP client: {error}"))?;
         Ok(Self { endpoint, http })

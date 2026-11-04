@@ -2,10 +2,16 @@
 
 import { create } from "zustand";
 import {
+  blockExplorerUrl,
+  currentExplorerUrl,
+  transactionExplorerUrl,
+} from "@/features/payments/explorer";
+import {
   DEFAULT_REQUIREMENTS,
   assessRequirements,
   type PrivacyRequirements,
 } from "@/features/guard/policy";
+import { fetchTransport } from "@/features/transport/client";
 import { classifyTestnetRecipient } from "@/features/payments/payment-request";
 import { decodeTracking, trackingSnapshot } from "@/features/payments/recovery";
 import { listVaultMeta, vaultReady } from "@/features/session/vault";
@@ -252,6 +258,11 @@ export const usePaymentStore = create<PaymentStore>((set, get) => ({
       return;
     }
     const pool = classifyTestnetRecipient(record.request.recipient);
+    // Re-read the transport at approval: the proxy may have stopped since the review loaded.
+    const network = requirements.mixnetOnly ? (await fetchTransport()).kind : undefined;
+    if (requirements.mixnetOnly && (get().busy || get().record !== record)) {
+      return; // another approval started, or the record changed, while we awaited
+    }
     const blockers = assessRequirements(
       {
         receiver: !pool.ok
@@ -263,6 +274,7 @@ export const usePaymentStore = create<PaymentStore>((set, get) => ({
         verified:
           pool.ok &&
           (backendKind !== "live" || Boolean(record.preparation)),
+        network,
       },
       requirements,
     );
@@ -324,16 +336,14 @@ export const usePaymentStore = create<PaymentStore>((set, get) => ({
             ? status.confirmations
             : null;
         const explorerTx =
-          status.explorer?.transaction ||
-          (txid
-            ? `https://testnet.zcashblockexplorer.com/transactions/${txid}`
-            : null);
+          currentExplorerUrl(status.explorer?.transaction) ||
+          (txid ? transactionExplorerUrl(txid) : null);
         const explorerBlock =
-          status.explorer?.block ||
+          currentExplorerUrl(status.explorer?.block) ||
           (blockHash
-            ? `https://testnet.zcashblockexplorer.com/blocks/${blockHash}`
+            ? blockExplorerUrl(blockHash)
             : minedHeight != null
-              ? `https://testnet.zcashblockexplorer.com/blocks/${minedHeight}`
+              ? blockExplorerUrl(minedHeight)
               : null);
         const next = {
           ...current,

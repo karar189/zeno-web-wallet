@@ -1,10 +1,14 @@
 "use client";
-import { Eye, LockKeyhole, ShieldCheck, TriangleAlert } from "lucide-react";
+import { Eye, LockKeyhole, Network, ShieldCheck, TriangleAlert } from "lucide-react";
 import {
   assessRequirements,
   type PrivacyFacts,
   type PrivacyRequirements,
 } from "@/features/guard/policy";
+import {
+  describeTransport,
+  type TransportStatus,
+} from "@/features/transport/client";
 
 export function PrivacyPreview({
   facts,
@@ -12,6 +16,7 @@ export function PrivacyPreview({
   onChange,
   simulated = false,
   sharingAddresses = false,
+  transport,
 }: {
   facts: PrivacyFacts;
   requirements: PrivacyRequirements;
@@ -19,8 +24,11 @@ export function PrivacyPreview({
   simulated?: boolean;
   /** Live 1Click deposit quotes share destination and refund addresses. */
   sharingAddresses?: boolean;
+  /** How the wallet service reaches lightwalletd. Omitted: the generic note is shown. */
+  transport?: TransportStatus;
 }) {
   const blockers = assessRequirements(facts, requirements);
+  const network = describeTransport(transport ?? { kind: "unknown" });
   return (
     <section className="privacy-preview" aria-label="Privacy preview">
       <div className="section-heading">
@@ -53,17 +61,26 @@ export function PrivacyPreview({
           <strong>
             {facts.provider
               ? "Provider and destination visibility"
-              : "Local wallet and network visibility"}
+              : network.title}
           </strong>
           <p>
             {facts.provider
               ? sharingAddresses
                 ? "1Click receives the amount, destination address, and transparent Zcash refund address for a live deposit. The Zcash deposit and the destination-chain payout are public."
                 : "1Click receives the amount so it can price the pair. Your addresses are not included until you prepare a deposit. A real swap on the destination chain is public."
-              : "The local wallet service processes payment details and signs. The lightwallet server can observe connection metadata. Shielding is not network anonymity."}
+              : network.detail}
           </p>
         </div>
       </div>
+      {facts.provider && transport && transport.kind !== "unknown" ? (
+        <div className="visibility-row">
+          <Network size={18} />
+          <div>
+            <strong>{network.title}</strong>
+            <p>{network.detail}</p>
+          </div>
+        </div>
+      ) : null}
       <fieldset className="privacy-options">
         <legend>Your requirements</legend>
         <label>
@@ -86,6 +103,18 @@ export function PrivacyPreview({
           />
           <span>Avoid external swap providers</span>
         </label>
+        {transport && transport.kind !== "unknown" ? (
+          <label>
+            <input
+              type="checkbox"
+              checked={Boolean(requirements.mixnetOnly)}
+              onChange={(e) =>
+                onChange({ ...requirements, mixnetOnly: e.target.checked })
+              }
+            />
+            <span>Require wallet traffic to go through Nym</span>
+          </label>
+        ) : null}
       </fieldset>
       <div
         className={blockers.length ? "guard-result blocked" : "guard-result"}

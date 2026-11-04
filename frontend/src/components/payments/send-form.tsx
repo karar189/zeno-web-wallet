@@ -8,11 +8,12 @@ import {
   parsePaymentUri,
 } from "@/features/payments/payment-request";
 import { resolveZcashNameClient } from "@/features/zns/client";
-import {
-  looksLikeZcashName,
-  parseZcashNameInput,
-} from "@/features/zns/parse";
+import { looksLikeZcashName, parseZcashNameInput } from "@/features/zns/parse";
 import type { ResolvedZcashName } from "@/features/zns/client";
+import {
+  AdvancedToggle,
+  useAdvancedView,
+} from "@/components/ui/advanced-toggle";
 import { playSound } from "@/lib/sound";
 import { usePaymentStore } from "@/stores/payment-store";
 import {
@@ -69,8 +70,11 @@ function SendFormFields({ request }: { request: string | null }) {
   const [spendable, setSpendable] = useState<string | null>(null);
   const [syncingChain, setSyncingChain] = useState(false);
   const [nameLookup, setNameLookup] = useState<NameLookup>({ status: "idle" });
-  const simulated = usePaymentStore((state) => state.backendKind === "simulated");
+  const simulated = usePaymentStore(
+    (state) => state.backendKind === "simulated",
+  );
   const { mainnetPreview, network } = usePreferredNetwork();
+  const [advanced] = useAdvancedView();
 
   useEffect(() => {
     let cancelled = false;
@@ -151,9 +155,7 @@ function SendFormFields({ request }: { request: string | null }) {
             status: "error",
             display: parsed.display,
             reason:
-              reason instanceof Error
-                ? reason.message
-                : "Name lookup failed.",
+              reason instanceof Error ? reason.message : "Name lookup failed.",
           });
         });
     }, 350);
@@ -253,7 +255,7 @@ function SendFormFields({ request }: { request: string | null }) {
   const nameBusy = nameLookup.status === "resolving";
 
   return (
-    <div className="workspace-page">
+    <div className="workspace-page single-flow">
       <div className="page-intro">
         <span className="eyebrow">
           Shielded payments /{" "}
@@ -264,11 +266,16 @@ function SendFormFields({ request }: { request: string | null }) {
           <br />
           <span>On your terms.</span>
         </h1>
-        <p>
-          {network === "mainnet"
-            ? "Prepare the payment, inspect it, then approve. This spends real ZEC."
-            : "Type a Zcash name or address, inspect privacy boundaries, then approve. Preparation never sends funds."}
-        </p>
+        {advanced ? (
+          <p>
+            {network === "mainnet"
+              ? "Prepare the payment, inspect it, then approve. This spends real ZEC."
+              : "Type a Zcash name or address, inspect privacy boundaries, then approve. Preparation never sends funds."}
+          </p>
+        ) : null}
+      </div>
+      <div className="flow-toolbar">
+        <AdvancedToggle />
       </div>
       <div className="route-layout">
         <form
@@ -302,11 +309,13 @@ function SendFormFields({ request }: { request: string | null }) {
                   : "david.zcash, utest1…, or tm… (opt-in)"
               }
             />
-            <small>
-              {network === "mainnet"
-                ? "Paste a mainnet address. Transparent t1 / t3 recipients are public."
-                : "Pay by Zcash name (`alice.zcash`) via the public ZNS indexer, or paste a testnet address. Transparent `tm…` / `t2…` recipients need an explicit privacy opt-out on review."}
-            </small>
+            {advanced ? (
+              <small>
+                {network === "mainnet"
+                  ? "Paste a mainnet address. Transparent t1 / t3 recipients are public."
+                  : "Pay by Zcash name (`alice.zcash`) via the public ZNS indexer, or paste a testnet address. Transparent `tm…` / `t2…` recipients need an explicit privacy opt-out on review."}
+              </small>
+            ) : null}
           </label>
           <NameResolveStatus lookup={nameLookup} />
           <label className="amount-field">
@@ -359,77 +368,81 @@ function SendFormFields({ request }: { request: string | null }) {
                     : "Prepare and review"}
             <ArrowRight size={17} />
           </button>
-          <p className="form-footnote">
-            {mainnetPreview
-              ? "Mainnet preview never quotes or broadcasts. Use the header network menu to return to testnet."
-              : "You will review the name (if used), recipient, exact fee, and privacy requirements before approving."}
-          </p>
+          {advanced || mainnetPreview ? (
+            <p className="form-footnote">
+              {mainnetPreview
+                ? "Mainnet preview never quotes or broadcasts. Use the header network menu to return to testnet."
+                : "You will review the name (if used), recipient, exact fee, and privacy requirements before approving."}
+            </p>
+          ) : null}
         </form>
-        <div className="space-y-5">
-          <section className="privacy-preview">
-            <div className="section-heading">
-              <span className="eyebrow">A deliberate boundary</span>
+        {advanced ? (
+          <div className="space-y-5">
+            <section className="privacy-preview">
+              <div className="section-heading">
+                <span className="eyebrow">A deliberate boundary</span>
+                <ShieldCheck size={20} />
+              </div>
+              <h2>Shielded, from the start.</h2>
+              <div className="visibility-row">
+                <AtSign size={18} />
+                <div>
+                  <strong>Pay by Zcash name</strong>
+                  <p>
+                    Names like `david.zcash` resolve through the Zcash Names
+                    indexer into a shielded unified address, then continue into
+                    the same privacy review as a pasted address.
+                  </p>
+                </div>
+              </div>
+              <div className="visibility-row">
+                <LockKeyhole size={18} />
+                <div>
+                  <strong>Transparent is opt-in</strong>
+                  <p>
+                    Shielded recipients stay the default. A transparent
+                    {network === "mainnet" ? " mainnet" : " testnet"} send is
+                    public on-chain and requires unchecking the shielded
+                    requirement on review before approval.
+                  </p>
+                </div>
+              </div>
+              <div className="visibility-row">
+                <ShieldCheck size={18} />
+                <div>
+                  <strong>Approval belongs to you</strong>
+                  <p>
+                    Review is separate from preparation. A broadcast
+                    acknowledgment is separate from a mined confirmation. An
+                    uncertain outcome is never automatically retried.
+                  </p>
+                </div>
+              </div>
+            </section>
+            <div className="boundary-note">
               <ShieldCheck size={20} />
-            </div>
-            <h2>Shielded, from the start.</h2>
-            <div className="visibility-row">
-              <AtSign size={18} />
               <div>
-                <strong>Pay by Zcash name</strong>
+                <strong>
+                  {simulated
+                    ? "You are using a simulated wallet"
+                    : network === "mainnet"
+                      ? "Mainnet payment"
+                      : "Testnet payment"}
+                </strong>
                 <p>
-                  Names like `david.zcash` resolve through the Zcash Names
-                  indexer into a shielded unified address, then continue into
-                  the same privacy review as a pasted address.
+                  {simulated
+                    ? "No proof, signature, or broadcast is produced. On review, disable the verified-receiver requirement to explore a simulated send."
+                    : network === "mainnet"
+                      ? "This spends real ZEC. Review the recipient and fee before you approve."
+                      : "This is a real network flow using coins with no monetary value."}
                 </p>
+                <Link href="/dashboard?wallet=1&view=receive">
+                  Create a receive request ↗
+                </Link>
               </div>
-            </div>
-            <div className="visibility-row">
-              <LockKeyhole size={18} />
-              <div>
-                <strong>Transparent is opt-in</strong>
-                <p>
-                  Shielded recipients stay the default. A transparent
-                  {network === "mainnet" ? " mainnet" : " testnet"} send is
-                  public on-chain and requires unchecking the shielded
-                  requirement on review before approval.
-                </p>
-              </div>
-            </div>
-            <div className="visibility-row">
-              <ShieldCheck size={18} />
-              <div>
-                <strong>Approval belongs to you</strong>
-                <p>
-                  Review is separate from preparation. A broadcast
-                  acknowledgment is separate from a mined confirmation. An
-                  uncertain outcome is never automatically retried.
-                </p>
-              </div>
-            </div>
-          </section>
-          <div className="boundary-note">
-            <ShieldCheck size={20} />
-            <div>
-              <strong>
-                {simulated
-                  ? "You are using a simulated wallet"
-                  : network === "mainnet"
-                    ? "Mainnet payment"
-                    : "Testnet payment"}
-              </strong>
-              <p>
-                {simulated
-                  ? "No proof, signature, or broadcast is produced. On review, disable the verified-receiver requirement to explore a simulated send."
-                  : network === "mainnet"
-                    ? "This spends real ZEC. Review the recipient and fee before you approve."
-                    : "This is a real network flow using coins with no monetary value."}
-              </p>
-              <Link href="/dashboard?wallet=1&view=receive">
-                Create a receive request ↗
-              </Link>
             </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </div>
   );

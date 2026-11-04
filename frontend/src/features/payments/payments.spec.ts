@@ -333,8 +333,10 @@ describe("live wallet backend", () => {
   it("prepares from the server quote and sends the exact bound values", async () => {
     const calls = stubWalletFetch([
       readinessPayload(),
+      readinessPayload(), // POST /sync: one pass even when synced
       quotePayload(),
       readinessPayload(),
+      readinessPayload(), // POST /sync before send
       SEND_ACCEPTED,
     ]);
     const { orchestrator, backend } = liveHarness();
@@ -353,9 +355,11 @@ describe("live wallet backend", () => {
     expect(backend.submitCount).toBe(0);
     expect(calls[0]).toMatchObject({ method: "GET", body: null });
     expect(calls[0]?.url).toMatch(/\/api\/wallet\/readiness$/);
-    expect(calls[1]?.url).toMatch(/\/api\/wallet\/quote$/);
-    expect(calls[1]?.method).toBe("POST");
-    expect(calls[1]?.body).toEqual({
+    expect(calls[1]).toMatchObject({ method: "POST" });
+    expect(calls[1]?.url).toMatch(/\/api\/wallet\/sync$/);
+    expect(calls[2]?.url).toMatch(/\/api\/wallet\/quote$/);
+    expect(calls[2]?.method).toBe("POST");
+    expect(calls[2]?.body).toEqual({
       recipient: DEMO_RECIPIENT,
       amountZatoshis: "10000000",
     });
@@ -364,10 +368,10 @@ describe("live wallet backend", () => {
     expect(backend.submitCount).toBe(1);
     expect(submitted.submission?.reference).toBe(LIVE_TXID);
     expect(submitted.submission?.txids).toEqual([LIVE_TXID]);
-    expect(calls).toHaveLength(4);
-    expect(calls[3]?.url).toMatch(/\/api\/wallet\/send$/);
-    expect(calls[3]?.method).toBe("POST");
-    expect(calls[3]?.body).toEqual({
+    expect(calls).toHaveLength(6);
+    expect(calls[5]?.url).toMatch(/\/api\/wallet\/send$/);
+    expect(calls[5]?.method).toBe("POST");
+    expect(calls[5]?.body).toEqual({
       quoteId: "quote_1",
       approved: true,
       recipient: DEMO_RECIPIENT,
@@ -379,7 +383,15 @@ describe("live wallet backend", () => {
   it("authorizes a quote that reserved the spendable notes", async () => {
     const calls = stubWalletFetch([
       readinessPayload(),
+      readinessPayload(), // POST /sync: one pass even when synced
       quotePayload(),
+      readinessPayload({
+        spendableZatoshis: "0",
+        canSubmit: false,
+        blocker:
+          "Spendable balance is zero zatoshi because 100000000 zatoshi is locked by an open quote. Complete or let that quote expire before sending.",
+        note: "Spendable balance is zero zatoshi because 100000000 zatoshi is locked by an open quote.",
+      }),
       readinessPayload({
         spendableZatoshis: "0",
         canSubmit: false,
@@ -396,12 +408,13 @@ describe("live wallet backend", () => {
     expect(prepared.phase).toBe("awaiting_approval");
     expect(backend.submitCount).toBe(1);
     expect(submitted.submission?.acceptedForBroadcast).toBe(true);
-    expect(calls[3]?.url).toMatch(/\/api\/wallet\/send$/);
+    expect(calls[5]?.url).toMatch(/\/api\/wallet\/send$/);
   });
 
   it("refuses a quote whose amount does not match the request", async () => {
     const calls = stubWalletFetch([
       readinessPayload(),
+      readinessPayload(), // POST /sync: one pass even when synced
       quotePayload({ amountZatoshis: "20000000" }),
     ]);
     const { orchestrator } = liveHarness();
@@ -410,12 +423,13 @@ describe("live wallet backend", () => {
     expect(result.failure?.code).toBe("invalid_request");
     expect(result.preparation).toBeNull();
     expect(result.submission).toBeNull();
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(3);
   });
 
   it("refuses to prepare when the wallet service returns no quote id", async () => {
     stubWalletFetch([
       readinessPayload(),
+      readinessPayload(), // POST /sync: one pass even when synced
       quotePayload({ quoteId: null, feeZatoshis: null }),
     ]);
     const { orchestrator } = liveHarness();
@@ -448,12 +462,11 @@ describe("live wallet backend", () => {
   });
 
   it("blocks preparation when the service reports it cannot submit", async () => {
-    stubWalletFetch([
-      readinessPayload({
-        canSubmit: false,
-        blocker: "The wallet has not finished scanning.",
-      }),
-    ]);
+    const notReady = readinessPayload({
+      canSubmit: false,
+      blocker: "The wallet has not finished scanning.",
+    });
+    stubWalletFetch([notReady, notReady]);
     const { orchestrator } = liveHarness();
     const result = await orchestrator.prepare(liveDraft(orchestrator));
 
@@ -465,8 +478,10 @@ describe("live wallet backend", () => {
   it("treats a transport failure during send as indeterminate and never retries", async () => {
     const calls = stubWalletFetch([
       readinessPayload(),
+      readinessPayload(), // POST /sync: one pass even when synced
       quotePayload(),
       readinessPayload(),
+      readinessPayload(), // POST /sync before send
       new TypeError("fetch failed"),
     ]);
     const { orchestrator, backend } = liveHarness();
@@ -480,14 +495,16 @@ describe("live wallet backend", () => {
 
     await orchestrator.authorizeAndSubmit(unknown);
     expect(backend.submitCount).toBe(1);
-    expect(calls).toHaveLength(4);
+    expect(calls).toHaveLength(6);
   });
 
   it("treats an explicit wallet-service refusal as rejected", async () => {
     stubWalletFetch([
       readinessPayload(),
+      readinessPayload(), // POST /sync: one pass even when synced
       quotePayload(),
       readinessPayload(),
+      readinessPayload(), // POST /sync before send
       jsonResponse({ message: "The quote was already used." }, 409),
     ]);
     const { orchestrator, backend } = liveHarness();

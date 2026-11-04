@@ -1,9 +1,16 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Eye, LockKeyhole, ScanLine, X } from "lucide-react";
+import { Download, Eye, LockKeyhole, Network, ScanLine, X } from "lucide-react";
 import { walletServiceUrl } from "@/features/faucet/client";
 import { formatZatoshis } from "@/features/payments/amount";
+import {
+  auditCsv,
+  auditCsvFileName,
+  coinAmount,
+  type AuditTransaction,
+} from "@/features/disclosure/audit-csv";
+import { useTransport } from "@/features/transport/use-transport";
 type Report = {
   network: "testnet";
   mode: "view_only";
@@ -12,6 +19,30 @@ type Report = {
   tipHeight: number;
   complete: boolean;
   canSpend: false;
+  transactions: AuditTransaction[];
+  enhanced: { requested: number; fetched: number; failed: number };
+};
+
+function downloadCsv(report: Report) {
+  // BOM so spreadsheet apps read memos as UTF-8.
+  const blob = new Blob(["\uFEFF", auditCsv(report.transactions, { unit: "TAZ" })], {
+    type: "text/csv;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = auditCsvFileName(report.network, report.scannedHeight);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const KIND_TEXT: Record<AuditTransaction["kind"], string> = {
+  received: "Received",
+  sent: "Sent",
+  shield: "Shielding",
+  other: "Other",
 };
 export function AuditorWorkspace() {
   const [key, setKey] = useState("");
@@ -20,6 +51,7 @@ export function AuditorWorkspace() {
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { transport } = useTransport();
   function clear() {
     setKey("");
     setBirthday("");
@@ -62,7 +94,7 @@ export function AuditorWorkspace() {
           cache: "no-store",
           credentials: "omit",
           referrerPolicy: "no-referrer",
-          signal: AbortSignal.timeout(95000),
+          signal: AbortSignal.timeout(320000),
         },
       );
       const result = await response.json();
@@ -73,7 +105,9 @@ export function AuditorWorkspace() {
         result.canSpend !== false ||
         result.network !== "testnet" ||
         typeof result.detectedZatoshis !== "string" ||
-        !/^\d+$/.test(result.detectedZatoshis)
+        !/^\d+$/.test(result.detectedZatoshis) ||
+        !Array.isArray(result.transactions) ||
+        typeof result.enhanced !== "object"
       )
         throw new Error("The scanner returned an unreadable result.");
       setReport(result);
@@ -144,8 +178,9 @@ export function AuditorWorkspace() {
                 placeholder="From the account export screen"
               />
               <small>
-                Use the original birthday. This prototype supports at most 2,000
-                blocks of history. A later birthday can omit funds.
+                Use the original birthday. One scan covers up to 50,000 blocks
+                (about six weeks on testnet) and can take a few minutes. A later
+                birthday can omit funds.
               </small>
             </label>
             <label className="consent-row">
@@ -156,8 +191,15 @@ export function AuditorWorkspace() {
               />
               <span>
                 Send this viewing key to my local wallet service for an
-                in-memory scan. The service will use its configured testnet
-                lightwallet server to fetch chain data.
+                in-memory scan. The service fetches blocks from its configured
+                testnet lightwallet server, then downloads each detected
+                transaction in full to read memos, fees and recipients. That
+                download tells the server which transaction ids you asked for
+                {transport.kind === "mixnet"
+                  ? `; it goes through ${transport.name}, so the server does not see your IP address.`
+                  : transport.kind === "direct"
+                    ? ", from your IP address. Route wallet traffic through Nym (Settings) to hide it."
+                    : "."}
               </span>
             </label>
           </fieldset>
@@ -167,7 +209,9 @@ export function AuditorWorkspace() {
             </p>
           )}
           <button className="primary-action" disabled={busy || !approved}>
-            {busy ? "Scanning encrypted notes…" : "Scan with viewing key"}
+            {busy
+              ? "Scanning encrypted notes… this can take minutes"
+              : "Scan with viewing key"}
             <ScanLine size={17} />
           </button>
           <button
@@ -210,6 +254,25 @@ export function AuditorWorkspace() {
                 </p>
               </div>
             </div>
+            <div className="visibility-row">
+              <Network size={18} />
+              <div>
+                <strong>
+                  {transport.kind === "mixnet"
+                    ? `Scans go through ${transport.name}`
+                    : transport.kind === "proxy-down"
+                      ? "Nym proxy not running"
+                      : "Scans connect directly"}
+                </strong>
+                <p>
+                  {transport.kind === "mixnet"
+                    ? "The lightwallet server learns which transactions were downloaded, but not from which IP address."
+                    : transport.kind === "proxy-down"
+                      ? "The wallet service will not fall back to a direct connection. Start nym-socks5-client to scan."
+                      : "The lightwallet server learns which transactions were downloaded and your IP address."}
+                </p>
+              </div>
+            </div>
             <Link className="text-link mt-4" href="/settings/disclosure">
               Create or export a dedicated account ↗
             </Link>
@@ -245,6 +308,73 @@ export function AuditorWorkspace() {
                   <dd>None</dd>
                 </div>
               </dl>
+              <div className="mt-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <strong>
+                    {report.transactions.length} transaction
+                    {report.transactions.length === 1 ? "" : "s"}
+                  </strong>
+                  <button
+                    type="button"
+                    className="secondary-action inline-flex items-center gap-2"
+                    onClick={() => downloadCsv(report)}
+                  >
+                    Download CSV for accounting <Download size={15} />
+                  </button>
+                </div>
+                {report.transactions.length ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="text-muted-foreground">
+                          <th className="py-1 pr-3 font-normal">Date (UTC)</th>
+                          <th className="py-1 pr-3 font-normal">Type</th>
+                          <th className="py-1 pr-3 text-right font-normal">Amount (TAZ)</th>
+                          <th className="py-1 pr-3 font-normal">Memo</th>
+                          <th className="py-1 font-normal">Txid</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {report.transactions.map((tx) => (
+                          <tr key={tx.txid} className="border-t border-[#383c54] align-top">
+                            <td className="py-1.5 pr-3 whitespace-nowrap">
+                              {tx.blockTime
+                                ? new Date(tx.blockTime * 1000).toISOString().slice(0, 16).replace("T", " ")
+                                : "Unmined"}
+                            </td>
+                            <td className="py-1.5 pr-3">{KIND_TEXT[tx.kind] ?? "Other"}</td>
+                            <td className="py-1.5 pr-3 text-right font-mono">
+                              {coinAmount(tx.netZatoshis)}
+                            </td>
+                            <td className="max-w-[14rem] truncate py-1.5 pr-3" title={tx.memos.join(" | ")}>
+                              {tx.memos.join(" | ") || (tx.fullDetails ? "—" : "Not fetched")}
+                            </td>
+                            <td className="py-1.5 font-mono" title={tx.txid}>
+                              {tx.txid.slice(0, 10)}…
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p>No transactions were detected in this range.</p>
+                )}
+                {report.enhanced.failed > 0 ? (
+                  <p className="text-[#E7A598]" role="status">
+                    {report.enhanced.failed} of {report.enhanced.requested} full
+                    transactions could not be downloaded. Their rows say
+                    &ldquo;Compact only&rdquo;: memo, fee and recipients may be
+                    missing. Amounts are still complete.
+                  </p>
+                ) : null}
+                <p className="form-footnote">
+                  The CSV is generated in this browser and saved only where you
+                  choose. It lists amounts as the change to this account&rsquo;s
+                  balance, fee included. Shielded senders are not revealed, so
+                  received rows have no counterparty.
+                </p>
+              </div>
               <p className="form-footnote">
                 The viewing key was cleared from the form. The scan database was
                 discarded after the response. This is not an audit attestation

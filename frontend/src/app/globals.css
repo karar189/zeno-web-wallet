@@ -333,8 +333,8 @@
 .wallet-popup-stack { display:flex; flex-direction:column; gap:12px; }
 .wallet-popup-balance { padding:14px; border-radius:14px; border:1px solid #454545; background:radial-gradient(ellipse at 100% 0%,#3d3d3d 0%,transparent 70%),#262626; }
 .wallet-popup-balance-row { display:flex; align-items:center; justify-content:space-between; color:#b5b5b5; font-size:11px; text-transform:uppercase; letter-spacing:1px; }
-.wallet-popup-amount { margin:10px 0 0; font-size:32px; letter-spacing:-1.2px; font-variant-numeric:tabular-nums; line-height:1.1; }
-.wallet-popup-amount span { font-size:13px; color:#a8a8a8; margin-left:6px; letter-spacing:0; }
+.wallet-popup-amount { margin:12px 0 0; font-size:44px; letter-spacing:-1.5px; font-variant-numeric:tabular-nums; line-height:1.1; }
+.wallet-popup-amount .wallet-popup-unit { font-size:15px; color:#a8a8a8; margin-left:6px; letter-spacing:0; }
 .wallet-popup-sub { margin:8px 0 0; font-size:11px; color:#9f9f9f; }
 .wallet-popup-addrs { display:flex; flex-direction:column; gap:8px; }
 .wallet-popup-addr { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:10px 12px; border-radius:12px; border:1px solid #343434; background:#151515; color:#ececec; cursor:pointer; }
@@ -354,8 +354,8 @@
 .cipher-loading { display:inline-block; font-variant-numeric:tabular-nums; vertical-align:baseline; }
 .cipher-loading-glyphs { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.04em; color:#e8e8e8; }
 .cipher-loading-glyphs.is-encrypted { color:#9a9a9a; text-shadow:0 0 10px rgba(231,165,152,.2); }
-.wallet-popup-amount .cipher-loading { font-size:32px; letter-spacing:-1.2px; line-height:1.1; }
-.wallet-popup-amount .cipher-loading-glyphs { font-size:inherit; letter-spacing:inherit; }
+.wallet-popup-amount .cipher-loading { font-size:44px; letter-spacing:-1.5px; line-height:1.1; }
+.wallet-popup-amount .cipher-loading-glyphs { font-size:inherit; letter-spacing:-.02em; color:#f7f4ef; }
 .wallet-popup-addr .cipher-loading-glyphs { font-size:12px; }
 .wallet-popup-addr .cipher-loading-glyphs.is-encrypted { color:#d7b4ab; }
 .wallet-popup-sub .cipher-loading-glyphs { font-size:11px; color:#b5b5b5; }

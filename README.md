@@ -30,6 +30,8 @@ Zeno keeps your **viewing key** synced on a server, so that work is already done
 - 🌲 **Ironwood (NU7):** Ironwood notes received and spent on testnet, shown on their own balance row.
 - 🏷️ **Pay by name:** `alice.zcash` resolves through the Zcash Names indexer into the same review.
 - 🔑 **Scoped viewing keys:** export a viewing key for a *dedicated* account and scan it read-only at `/audit`.
+- 📒 **Accountant-ready CSV:** the read-only scan downloads each detected transaction in full (memos, fees, outgoing recipients) and exports one row per transaction with dates, fixed 8-decimal amounts and formula-safe memo text.
+- 🕸️ **Nym for lightwalletd traffic (opt-in):** point the wallet service at a local `nym-socks5-client` and all lightwalletd and faucet traffic goes through the Nym mixnet, with no direct fallback. The privacy review shows the network path and can require Nym before you approve.
 - ⚡ **Instant Sync (opt-in):** cached balance and history served from the sync server.
 - 🔒 **Spending stays local:** proving and signing run in a loopback Rust service. No server ever receives a spending key.
 - 🪂 **Graceful fallback:** if the sync server is down or slow (>3 s), Zeno silently uses local sync.
@@ -176,6 +178,14 @@ LIGHTWALLETD_ENDPOINT=https://testnet.zec.rocks:443 cargo run --release
 
 It binds to loopback only and accepts requests only from `http://localhost:3000`. **Never expose port 8787**: create and unlock are not behind a bearer token.
 
+**Optional: route wallet traffic through Nym.** Run [`nym-socks5-client`](https://github.com/nymtech/nym/releases) (it listens on `127.0.0.1:1080` by default), then start the wallet service with:
+
+```bash
+WALLET_SOCKS5_PROXY=socks5h://127.0.0.1:1080   # plus the variables above
+```
+
+Every lightwalletd and faucet connection then goes through the proxy, and hostnames are resolved by the proxy, not locally. If the proxy stops, sync and send fail instead of falling back to a direct connection. **Settings → Network privacy** shows the current path.
+
 ### 3. Run the sync server (optional)
 
 ```bash
@@ -217,6 +227,17 @@ With `NEXT_PUBLIC_WALLET_BACKEND` unset or set to `simulated`, the app is a clic
 | `NEXT_PUBLIC_WALLET_BACKEND` | `simulated` | `live` to use the local wallet service |
 | `NEXT_PUBLIC_WALLET_URL` | `http://127.0.0.1:8787` | Testnet wallet service (must be loopback) |
 | `NEXT_PUBLIC_INSTANT_SYNC_URL` | — | Sync server URL. Instant Sync is unavailable when unset |
+
+**Wallet service** (`engine/services/wallet-service`)
+
+| Variable | Default | Description |
+|---|---|---|
+| `WALLET_NETWORK` | — | `testnet` or `mainnet` |
+| `WALLET_API_BIND` | — | Loopback address, e.g. `127.0.0.1:8787` |
+| `WALLET_DATA_DIR` | — | Wallet database, vaults and send journal |
+| `LIGHTWALLETD_ENDPOINT` | — | e.g. `https://testnet.zec.rocks:443` |
+| `WALLET_SOCKS5_PROXY` | — | `socks5h://127.0.0.1:1080` to send all outbound traffic through a local SOCKS5 proxy (Nym). Loopback only, no direct fallback |
+| `WALLET_SOCKS5_PROXY_NAME` | `Nym mixnet` | Label shown in the app for that proxy |
 
 **Sync server** (`instant-sync-server`)
 
@@ -308,7 +329,7 @@ Liveness and queue info.
 
 - **On chain:** for shielded-to-shielded sends, sender, recipient, amount and memo are encrypted. Transparent sends are public, and the app says so before you approve.
 - **Your seed:** encrypted in the browser (Argon2id + ChaCha20-Poly1305, stored in IndexedDB). Decrypted only by the wallet service on `127.0.0.1`, in memory, while unlocked.
-- **lightwalletd (`testnet.zec.rocks`):** sees your IP address, when you sync, and the bytes of transactions you broadcast. It cannot decrypt shielded notes.
+- **lightwalletd (`testnet.zec.rocks`):** sees your IP address, when you sync, and the bytes of transactions you broadcast. It cannot decrypt shielded notes. With Nym on, it sees a Nym exit instead of your IP; timing and broadcast bytes are still visible. Name lookups, swap quotes and Instant Sync connect directly either way.
 - **Instant Sync operator (dev mode):** can see all of the primary account's shielded activity, including future activity. A viewing key cannot be revoked; turning Instant Sync off deletes the server's copy.
 - **No Zeno account, analytics, or remote log.**
 
@@ -444,7 +465,7 @@ The frontend can be deployed on its own (e.g. Vercel). Without a local wallet se
 - [x] **v0:** Instant Sync server on testnet, web integration, local fallback
 - [x] **M1:** AWS Nitro Enclave, attestation verification in the client, reproducible builds *(first attested deployment and published PCRs pending)*
 - [ ] **M2:** IVK-only mode (receive-only visibility), response padding, security audit
-- [ ] **M3:** Nym for lightwalletd traffic, send and review inside the extension popup, viewing-key export to accountant-ready CSV
+- [x] **M3:** Nym for lightwalletd traffic, send and review inside the extension popup, viewing-key export to accountant-ready CSV *(Nym path tested through a local SOCKS5 proxy; not yet against the live mixnet)*
 - [ ] **M4:** open-source client SDK for other wallets, mainnet beta, migration path to Tachyon oblivious sync
 
 ---
