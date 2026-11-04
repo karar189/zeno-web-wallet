@@ -474,17 +474,15 @@ The frontend can be deployed on its own (e.g. Vercel). Without a local wallet se
 
 See [DEMO.md](./DEMO.md): cold-open the same wallet with Instant Sync off vs on with the timer visible, then watch a shielded payment land.
 
-**Testnet evidence**, found by Instant Sync from the demo wallet's viewing key via `testnet.zec.rocks`:
+**Testnet evidence** from 2026-11-04, sent and received with Zeno against `testnet.zec.rocks`. All three are fully shielded (Ironwood pool, no transparent inputs or outputs) and confirmed on chain:
 
-| txid | Mined | What |
-|---|---|---|
-| `f9dbb8bb655113e6d1f65efe3bfc4e8202bb3b375e96ec7ed2fbc55968c7d689` | 4,560,716 | Received 1.00 TAZ, Ironwood |
-| `c2267ce983ca1f530015b13424f7bfc9090cbfe4eccffae41779594089150c76` | 4,561,446 | Sent 0.0101 TAZ, shielded (Ironwood change) |
-| `fdf1921e895c9472426d787402c8cf23b1d17269011068bb3c450320ac8f9eea` | 4,561,983 | Sent 0.20015 TAZ, shielded (Ironwood change) |
+| txid | Block | Time (IST) | What |
+|---|---|---|---|
+| [`0f34e70ec9f8e08303fd9bf863aceda241c30658a58153b2608bac8a18a4d97b`](https://testnet.cipherscan.app/tx/0f34e70ec9f8e08303fd9bf863aceda241c30658a58153b2608bac8a18a4d97b) | [4,582,260](https://testnet.cipherscan.app/block/4582260) | 19:32 | Received 0.1 TAZ into the demo wallet |
+| [`8629444e00ef03bd4786ccda1369d10086df31706688e85b4ff4a38e737d8438`](https://testnet.cipherscan.app/tx/8629444e00ef03bd4786ccda1369d10086df31706688e85b4ff4a38e737d8438) | [4,582,375](https://testnet.cipherscan.app/block/4582375) | 20:17 | Sent 0.01 TAZ wallet-to-wallet (fee 0.0001), detected by the receiving wallet |
+| [`18b0febca5621c6755cef3c6431d01d84cf545ba5832b2eb0cd4648092c355c4`](https://testnet.cipherscan.app/tx/18b0febca5621c6755cef3c6431d01d84cf545ba5832b2eb0cd4648092c355c4) | [4,582,634](https://testnet.cipherscan.app/block/4582634) | 22:01 | Sent 0.02 TAZ wallet-to-wallet (fee 0.0001), detected by the receiving wallet |
 
-First sync for this wallet: **41.7 s** from birthday to ready; cached state then serves in ~2 ms. Ironwood spendable reported: 0.78975 TAZ, matching the two sends.
-
-<!-- TODO before submitting: add the shielded txid sent during the hack on 2026-11-04 here. -->
+Both sends appear in the sender's and the receiver's wallet databases. The receiver's balance is 0.03 TAZ.
 
 More detail: [wallet](./docs/wallet.md) · [shielded payments](./docs/shielded-payments.md) · [selective disclosure](./docs/selective-disclosure.md) · [privacy review](./docs/privacy-workspace.md) · [extension](./extension/README.md)
 
