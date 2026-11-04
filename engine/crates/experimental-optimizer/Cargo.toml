@@ -1,0 +1,8 @@
+[package]
+name = "experimental-optimizer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+api-types.workspace = true

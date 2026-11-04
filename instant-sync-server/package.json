@@ -1,0 +1,12 @@
+{
+  "name": "instant-sync-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Keeps Zcash testnet viewing keys synced with zcash-devtool and serves cached state instantly.",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node test/smoke.mjs"
+  }
+}

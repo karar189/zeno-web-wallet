@@ -1,0 +1,17 @@
+---
+description: Route Zcash work through zcashskills before wallet, payments, light-client, or protocol changes
+alwaysApply: true
+---
+
+# zcashskills
+
+Read https://zcashlabs.github.io/zcash-skills/SKILL.md and follow it before writing wallet code, touching shielded transactions, or shipping anything on Zcash.
+
+That file is the router. After reading it, open the specialist skill it names for the task (for example `zcash-wallet`, `zcash-payments`, `zcash-light-client`, `zcash-protocol`, `zakura`, or a `ths-*` skill).
+
+## Hard constraints from the router
+
+- Treat current Zcash state as authoritative from the skill — do not rely on stale `zcashd`-era assumptions.
+- Keep amounts in integer zatoshis end to end; format ZEC only at the display edge.
+- A timed-out send is an unknown outcome — reconcile the original txid before constructing a replacement.
+- Parsing an address does not prove ownership; an IVK does not spend.

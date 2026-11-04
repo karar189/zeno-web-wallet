@@ -1,0 +1,42 @@
+[workspace]
+resolver = "2"
+
+[package]
+name = "wallet-service"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+api-types = { path = "../../crates/api-types" }
+argon2 = "0.5"
+chacha20poly1305 = "0.10"
+wallet-core = { path = "../../crates/wallet-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+async-trait = "0.1"
+axum = "0.7"
+bip0039 = "0.12"
+hex = "0.4"
+rand = "0.10"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-webpki-roots"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
+secrecy = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["cors"] }
+uuid = { version = "1", features = ["v4"] }
+zcash_address = "0.14"
+tonic = { version = "0.14", features = ["tls-ring", "tls-webpki-roots", "transport"] }
+zcash_client_backend = { version = "=0.25.0", default-features = false, features = ["lightwalletd-tonic-tls-webpki-roots", "lightwalletd-tonic-transport", "sync", "transparent-inputs", "transparent-key-import"] }
+zcash_client_sqlite = { version = "=0.23.0", features = ["transparent-inputs", "transparent-key-import"] }
+zcash_keys = { version = "0.17", features = ["transparent-inputs"] }
+zcash_transparent = "0.11"
+zcash_primitives = "0.31"
+zcash_proofs = { version = "=0.31.0", features = ["bundled-prover"] }
+zcash_protocol = "0.11"
+zip32 = "0.3"
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

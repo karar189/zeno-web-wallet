@@ -1,0 +1,145 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useRef } from "react";
+import { ChainLinks } from "@/components/payments/chain-links";
+import { deriveLifecycle } from "@/features/payments/lifecycle";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { playSound } from "@/lib/sound";
+import { usePaymentStore } from "@/stores/payment-store";
+
+const rowLabel = {
+  submission: "Submission",
+  confirmation: "Confirmation",
+  detection: "Recipient detection",
+} as const;
+
+export function ProgressPanel() {
+  const { busy, record, track } = usePaymentStore();
+  const board = record ? deriveLifecycle(record) : null;
+  const lifecycleState = board?.state ?? null;
+  const previousState = useRef<string | null>(null);
+
+  useEffect(() => {
+    void track();
+  }, [record?.id, record?.submission?.reference, track]);
+
+  useEffect(() => {
+    if (lifecycleState === null) {
+      return;
+    }
+    if (previousState.current === null) {
+      previousState.current = lifecycleState;
+      return;
+    }
+    if (previousState.current === lifecycleState) {
+      return;
+    }
+    previousState.current = lifecycleState;
+    playSound(
+      lifecycleState === "received"
+        ? "success"
+        : lifecycleState === "failed" || lifecycleState === "unknown"
+          ? "error"
+          : "step",
+    );
+  }, [lifecycleState]);
+
+  if (!record || !board) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>No payment in progress</CardTitle>
+          <CardDescription>Authorize a payment to see its status.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            className={buttonVariants({ variant: "outline" })}
+            href="/pay/send"
+            data-sound="nav"
+          >
+            Go to send
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const rows = [
+    ["submission", board.submission],
+    ["confirmation", board.confirmation],
+    ["detection", board.detection],
+  ] as const;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{board.message}</CardTitle>
+        <CardDescription>{board.evidence}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {board.simulated ? (
+          <p className="rounded-lg border px-3 py-2 text-sm">
+            Simulated status. No Zcash transaction was broadcast, and no block was observed.
+          </p>
+        ) : null}
+        <Badge variant="outline">{board.state}</Badge>
+        {busy ? <p className="text-muted-foreground text-sm">{busy}</p> : null}
+        <ol className="space-y-3">
+          {rows.map(([key, value], index) => (
+            <li key={key} className="flex items-start gap-3">
+              <span className="text-muted-foreground w-6 text-sm">{index + 1}</span>
+              <div>
+                <p className="text-sm font-medium">{rowLabel[key]}</p>
+                <p className="text-muted-foreground text-sm">{value.replaceAll("_", " ")}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <div>
+          <p className="text-muted-foreground text-xs">Reference</p>
+          <p className="font-mono text-sm break-all">
+            {record.submission?.reference ?? "No broadcast reference"}
+          </p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {record.submission?.note ?? (record.statusConfidence === "unknown" ? "Submission outcome unknown. Check the wallet before retrying." : "No broadcast evidence is available.")}
+          </p>
+        </div>
+        <ChainLinks submission={record.submission} chain={record.chain} />
+        {record.failure ? (
+          <p className="text-sm">
+            {record.failure.message} {record.failure.recovery}
+          </p>
+        ) : null}
+        {record.submission ? (
+          <Button
+            variant="outline"
+            disabled={busy !== null}
+            onClick={() => void track()}
+          >
+            {record.detection?.detected && record.confirmation?.met
+              ? "Refresh status"
+              : "Check status again"}
+          </Button>
+        ) : null}
+        {record.confirmation?.note ? (
+          <p className="text-muted-foreground text-sm">{record.confirmation.note}</p>
+        ) : null}
+        {record.detection?.note ? (
+          <p className="text-muted-foreground text-sm">{record.detection.note}</p>
+        ) : null}
+        <Link className={buttonVariants({ variant: "outline" })} href="/dashboard" data-sound="nav">
+          Done
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}

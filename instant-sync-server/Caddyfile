@@ -1,0 +1,12 @@
+# Automatic HTTPS for the Instant Sync server. Set DOMAIN in .env (e.g. sync.example.com).
+{$DOMAIN} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+	# No access log: requests carry bearer tokens. Caddy redacts Authorization by default,
+	# but keeping logs off is simpler to reason about for v0.
+	reverse_proxy instant-sync:8790
+}

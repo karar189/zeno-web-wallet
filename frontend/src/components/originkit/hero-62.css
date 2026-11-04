@@ -1,0 +1,195 @@
+@import url("https://fonts.googleapis.com/css2?family=Michroma&display=swap");
+
+.hero-62 {
+  background: #000;
+  color: #8c8c8c;
+  font-family: Michroma, "Space Grotesk", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  isolation: isolate;
+}
+.hero-62,
+.hero-62 * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+.hero-62 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Hero — all sizes in cqw so it scales with its container, like the 2400px reference */
+.hero-62 .hero {
+  container-type: inline-size;
+  width: 100%;
+}
+.hero-62 .hero__frame {
+  position: relative;
+  overflow: hidden;
+  background: #0a0a0a;
+  border-radius: 1.2cqw;
+  min-height: 100vh;
+  text-transform: uppercase;
+}
+.hero-62 .hero__drift {
+  position: absolute;
+  bottom: 0;
+  left: 1.45cqw;
+  width: 97.3cqw;
+  z-index: 1;
+  pointer-events: none;
+}
+.hero-62 .hero__drift > div {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  width: 100%;
+  height: 100%;
+}
+.hero-62 .hero__content {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.hero-62 .hero__nav {
+  position: absolute;
+  top: 1.6cqw;
+  left: 3.5cqw;
+  right: 3.5cqw;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  font-size: 0.62cqw;
+  letter-spacing: 0.06em;
+}
+.hero-62 .hero__nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2.1cqw;
+}
+.hero-62 .hero__nav ul:last-child {
+  justify-content: flex-end;
+}
+.hero-62 .hero__logo {
+  font-size: 0.78cqw;
+  letter-spacing: 0.14em;
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+}
+.hero-62 .hero__logo .zeno-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9em;
+}
+.hero-62 .hero__logo .zeno-mark-icon {
+  width: 2.3em;
+  height: 2.3em;
+  flex: none;
+}
+.hero-62 .hero__logo .dot-matrix {
+  width: 5.8em;
+}
+
+.hero-62 .hero__title {
+  position: absolute;
+  top: 13cqw;
+  left: 3.5cqw;
+  right: 3.5cqw;
+  font-size: 5.05cqw;
+  line-height: 5.35cqw;
+  letter-spacing: 0.02em;
+  font-weight: 400;
+  color: #fff;
+}
+.hero-62 .hero__title span {
+  display: block;
+  white-space: nowrap;
+}
+.hero-62 .hero__title span:nth-child(2) {
+  padding-left: 20.6cqw;
+}
+.hero-62 .hero__title span:nth-child(3) {
+  text-align: right;
+}
+.hero-62 .hero__cta {
+  color: #fff;
+  white-space: nowrap;
+  position: absolute;
+  left: 3.5cqw;
+  top: 26.4cqw;
+  font-size: 0.62cqw;
+  letter-spacing: 0.06em;
+}
+.hero-62 .hero__cta:hover {
+  opacity: 0.7;
+}
+
+.hero-62 .hero__grid {
+  position: absolute;
+  left: 1.45cqw;
+  bottom: 0;
+  width: 97.3cqw;
+  display: block;
+}
+
+/* Below the reference range the cqw type gets too small to read, so give it floors. */
+@media (max-width: 1279px) {
+  .hero-62 .hero__nav,
+  .hero-62 .hero__cta {
+    font-size: max(0.62cqw, 10px);
+  }
+  .hero-62 .hero__logo {
+    font-size: max(0.78cqw, 12px);
+  }
+}
+
+/* Tablets and phones: the nav keeps the logo + secondary links. */
+@media (max-width: 900px) {
+  .hero-62 .hero__nav {
+    top: 8px;
+    left: max(3.5cqw, 16px);
+    right: max(3.5cqw, 16px);
+    grid-template-columns: auto 1fr;
+    font-size: 11px;
+  }
+  .hero-62 .hero__nav ul:first-child {
+    display: none;
+  }
+  .hero-62 .hero__nav ul {
+    gap: 18px;
+  }
+  .hero-62 .hero__nav ul a {
+    display: inline-block;
+    padding-block: 14px;
+  } /* comfortable tap targets */
+  .hero-62 .hero__logo {
+    font-size: 12px;
+  }
+}
+
+/* Phones: a larger stacked title, the CTA under it, and the grid below both. */
+@media (max-width: 600px) {
+  .hero-62 .hero__frame {
+    border-radius: 12px;
+  }
+  .hero-62 .hero__nav ul li:not(:last-child) {
+    display: none;
+  } /* logo + Contact only */
+  .hero-62 .hero__title {
+    top: 26cqw;
+    font-size: 7.4cqw;
+    line-height: 8.3cqw;
+  }
+  .hero-62 .hero__title span:nth-child(2) {
+    padding-left: 14cqw;
+  }
+  .hero-62 .hero__cta {
+    top: 55cqw;
+    font-size: 11px;
+    padding-block: 14px;
+  }
+}

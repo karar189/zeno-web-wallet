@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Zeno Wallet</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <iframe
+      id="zeno"
+      src="http://localhost:3000/popup"
+      title="Zeno Wallet"
+      allow="clipboard-write"
+    ></iframe>
+    <div id="offline" hidden>
+      <strong>Zeno app is not running</strong>
+      <p>Start the frontend on <code>localhost:3000</code> and the wallet service, then reopen.</p>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

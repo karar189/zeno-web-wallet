@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/api-types",
+  "crates/wallet-core",
+  "crates/zcash-adapter",
+  "crates/payment-orchestrator",
+  "crates/benchmark-engine",
+  "crates/experimental-optimizer",
+  "services/payment-api",
+]
+exclude = ["services/wallet-service"]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+version = "0.1.0"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+api-types = { path = "crates/api-types" }
+wallet-core = { path = "crates/wallet-core" }
+zcash-adapter = { path = "crates/zcash-adapter" }
+payment-orchestrator = { path = "crates/payment-orchestrator" }
+benchmark-engine = { path = "crates/benchmark-engine" }
+experimental-optimizer = { path = "crates/experimental-optimizer" }

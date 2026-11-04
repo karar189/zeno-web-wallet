@@ -1,0 +1,825 @@
+/* Desk theme — continues the landing page: black field, Michroma, gold lines, square frames. */
+
+:root {
+  --zeno-black: #000;
+  --zeno-panel: #0a0a0a;
+  --zeno-line: rgba(244, 241, 234, 0.22);
+  --zeno-text: #f7f4ef;
+  --zeno-muted: #8c8c8c;
+  --zeno-orange: #ff8c2a;
+  --zeno-yellow: #ffc14a;
+  --land-gold: #ffc14a;
+  --land-amber: #ff8c2a;
+  --land-paper: #f7f4ef;
+  --land-mute: #8c8c8c;
+  --land-line: rgba(244, 241, 234, 0.22);
+  --land-panel: #0a0a0a;
+}
+
+.zeno-app {
+  --background: #000;
+  --foreground: #f7f4ef;
+  --muted-foreground: #8c8c8c;
+  --border: rgba(244, 241, 234, 0.22);
+  --card: #0a0a0a;
+  --primary: #ffc14a;
+  --primary-foreground: #140e08;
+  --ring: #ffc14a;
+  --accent: #ffc14a;
+  --accent-foreground: #140e08;
+  background: #000;
+  color: #f7f4ef;
+  font-family: Michroma, "Space Grotesk", system-ui, sans-serif;
+  min-height: 100svh;
+  display: flex;
+}
+
+.zeno-app :where(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid #ffc14a;
+  outline-offset: 4px;
+}
+
+.zeno-app h1,
+.zeno-app h2,
+.zeno-app h3,
+.zeno-app .wallet-page-title {
+  font-family: Michroma, "Space Grotesk", system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #f7f4ef;
+}
+
+.zeno-app h1,
+.zeno-app .wallet-page-title {
+  font-size: clamp(28px, 3.2vw, 42px);
+  line-height: 1.1;
+  margin-top: 10px;
+}
+
+.zeno-app h1 span {
+  color: #8c8c8c;
+}
+
+.zeno-app p,
+.zeno-app .wallet-page-lead,
+.zeno-app .overview-intro > p,
+.zeno-app .page-intro > p {
+  font-family: var(--font-landing-sans), sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #c9c4ba;
+}
+
+.zeno-app .eyebrow,
+.zeno-app .desk-kicker,
+.zeno-app .instrument-label,
+.zeno-app .header-context,
+.zeno-app .sidebar-label,
+.zeno-app .brand-caption {
+  font-family: Michroma, "Space Grotesk", system-ui, sans-serif;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #ffc14a;
+}
+
+/* Shell */
+.zeno-app .app-sidebar {
+  width: 232px;
+  padding: 28px 14px 18px;
+  border-right: 1px solid var(--land-line);
+  background: #050505;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 50;
+}
+
+.zeno-app .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 18px;
+  color: #f7f4ef;
+  text-decoration: none;
+}
+
+.zeno-app .brand .zeno-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.zeno-app .brand .zeno-mark-icon {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
+.zeno-app .brand .dot-matrix,
+.zeno-app .mobile-brand .dot-matrix {
+  width: 78px;
+  color: #f7f4ef;
+}
+
+.zeno-app .mobile-brand .zeno-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zeno-app .mobile-brand .zeno-mark-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.zeno-app .brand-caption {
+  display: block;
+  margin-top: 10px;
+  font-size: 8px;
+  color: #8c8c8c;
+}
+
+.zeno-app .sidebar-label {
+  margin: 28px 10px 12px;
+  font-size: 10px;
+  color: #8c8c8c;
+}
+
+.zeno-app .nav-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 2px 0;
+  padding: 12px 12px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  color: #8c8c8c;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition:
+    color 0.18s,
+    border-color 0.18s,
+    background 0.18s;
+}
+
+.zeno-app .nav-item:hover {
+  color: #f7f4ef;
+  background: #100e0c;
+  border-color: var(--land-line);
+}
+
+.zeno-app .nav-item.active {
+  color: #140e08;
+  background: #ffc14a;
+  border-color: #ffc14a;
+}
+
+.zeno-app .active-dot {
+  width: 5px;
+  height: 5px;
+  margin-left: auto;
+  border-radius: 0;
+  background: #140e08;
+}
+
+.zeno-app .sidebar-bottom {
+  margin-top: auto;
+  padding-top: 24px;
+}
+
+.zeno-app .sidebar-note {
+  margin: 0 4px 14px;
+  padding: 16px 12px;
+  border: 1px solid var(--land-line);
+  border-top: 1px solid var(--land-line);
+  color: #ffc14a;
+  background:
+    repeating-linear-gradient(
+      -32deg,
+      transparent 0 5px,
+      rgba(255, 193, 74, 0.08) 5px 6px
+    );
+}
+
+.zeno-app .sidebar-note strong {
+  display: block;
+  margin: 10px 0 6px;
+  color: #f7f4ef;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.zeno-app .sidebar-note p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #c9c4ba;
+}
+
+.zeno-app .app-body {
+  margin-left: 232px;
+  min-width: 0;
+  flex: 1;
+  background: #000;
+}
+
+.zeno-app .workspace-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 72px;
+  padding: 16px max(3.5vw, 20px);
+  border-bottom: 1px solid var(--land-line);
+  gap: 16px;
+  position: relative;
+  z-index: 60;
+  background: #050505;
+}
+
+.zeno-app .header-context {
+  font-size: 10px;
+  color: #8c8c8c;
+}
+
+.zeno-app .header-context > span {
+  margin: 0 10px;
+  color: #5a5a5a;
+}
+
+.zeno-app .workspace-main {
+  width: min(1180px, 100%);
+  margin: auto;
+  padding: 40px max(3.5vw, 20px) 64px;
+  min-height: calc(100svh - 140px);
+}
+
+.zeno-app .workspace-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px max(3.5vw, 20px);
+  border-top: 1px solid var(--land-line);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8c8c8c;
+}
+
+/* Surfaces */
+.zeno-app .surface,
+.zeno-app .balance-surface,
+.zeno-app .privacy-preview,
+.zeno-app .gate-wrap,
+.zeno-app [data-slot="card"],
+.zeno-app .wallet-card,
+.zeno-app .wallet-card-flat {
+  background: #0a0a0a;
+  border: 1px solid var(--land-line);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.zeno-app .balance-surface {
+  padding: 28px;
+  min-height: 260px;
+  background: #0a0a0a;
+}
+
+.zeno-app .balance-surface::after {
+  display: none;
+}
+
+.zeno-app .balance-number {
+  font-family: Michroma, "Space Grotesk", system-ui, sans-serif;
+  font-size: clamp(34px, 4vw, 52px);
+  letter-spacing: 0.01em;
+  color: #f7f4ef;
+}
+
+.zeno-app .primary-action,
+.zeno-app .secondary-action,
+.zeno-app .wallet-launcher-btn,
+.zeno-app .wallet-popup-primary,
+.zeno-app .wallet-popup-lock {
+  border-radius: 0;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 400;
+  font-family: Michroma, "Space Grotesk", system-ui, sans-serif;
+}
+
+.zeno-app .primary-action,
+.zeno-app .wallet-popup-primary {
+  background: #ffc14a;
+  border: 1px solid #ffc14a;
+  color: #140e08;
+}
+
+.zeno-app .primary-action:hover,
+.zeno-app .wallet-popup-primary:hover {
+  background: #ffe08a;
+  border-color: #ffe08a;
+}
+
+.zeno-app .secondary-action,
+.zeno-app .wallet-popup-lock,
+.zeno-app .wallet-launcher-btn {
+  background: transparent;
+  border: 1px solid var(--land-line);
+  color: #f7f4ef;
+}
+
+.zeno-app .secondary-action:hover,
+.zeno-app .wallet-popup-lock:hover,
+.zeno-app .wallet-launcher-btn:hover,
+.zeno-app .wallet-launcher-btn.open {
+  border-color: #ffc14a;
+  color: #ffc14a;
+  background: #100e0c;
+}
+
+.zeno-app .network-pill,
+.zeno-app .network-switcher-btn {
+  border-radius: 0;
+  border-color: var(--land-line);
+  background: transparent;
+  color: #ffc14a;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.zeno-app .status-dot {
+  background: #ffc14a;
+  border-radius: 0;
+}
+
+.zeno-app .network-menu {
+  border-radius: 0;
+  border-color: var(--land-line);
+  background: #0a0a0a;
+}
+
+.zeno-app .network-option {
+  border-radius: 0;
+}
+
+.zeno-app .network-option:hover,
+.zeno-app .network-option.active {
+  background: #14110c;
+}
+
+/* Wallet popup */
+.zeno-app .wallet-popup {
+  border-radius: 0;
+  border: 1px solid var(--land-line);
+  background: #0a0a0a;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+}
+
+.zeno-app .wallet-popup-head {
+  border-bottom: 1px solid var(--land-line);
+  background: #0a0a0af5;
+}
+
+.zeno-app .wallet-popup-eyebrow {
+  color: #ffc14a;
+  letter-spacing: 0.16em;
+}
+
+.zeno-app .wallet-popup-head h2 {
+  font-size: 16px;
+  letter-spacing: 0.08em;
+}
+
+.zeno-app .wallet-popup-balance,
+.zeno-app .wallet-popup-addr,
+.zeno-app .wallet-popup-action,
+.zeno-app .wallet-popup-amount-field input,
+.zeno-app .wallet-locked-banner,
+.zeno-app .amount-field,
+.zeno-app .field-label input,
+.zeno-app .field-label select,
+.zeno-app .payment-details,
+.zeno-app .inline-error,
+.zeno-app .gate-wrap {
+  border-radius: 0;
+  border-color: var(--land-line);
+  background: #050505;
+}
+
+.zeno-app .wallet-popup-balance {
+  background: #0a0a0a;
+}
+
+.zeno-app .wallet-popup-action:hover,
+.zeno-app .wallet-popup-addr:hover {
+  background: #14110c;
+  border-color: #ffc14a;
+}
+
+.zeno-app .wallet-popup-link {
+  color: #ffc14a;
+}
+
+.zeno-app .wallet-popup-notice {
+  color: #ffc14a;
+}
+
+.zeno-app .text-link {
+  color: #ffc14a;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.zeno-app .feature-link:hover,
+.zeno-app .landing-module:hover {
+  background: #100e0c;
+  border-color: #ffc14a;
+}
+
+.zeno-app .feature-grid {
+  gap: 0;
+  border: 1px solid var(--land-line);
+}
+
+.zeno-app .feature-link {
+  border-radius: 0;
+  border: 0;
+  border-right: 1px solid var(--land-line);
+  background: #0a0a0a;
+  padding: 28px;
+}
+
+.zeno-app .feature-link:last-child {
+  border-right: 0;
+}
+
+.zeno-app .feature-icon {
+  color: #ffc14a;
+  border: 1px solid var(--land-line);
+  border-radius: 0;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  margin-bottom: 20px;
+}
+
+.zeno-app .guard-home {
+  position: relative;
+  overflow: hidden;
+}
+
+.zeno-app .guard-home .dashboard-glyph,
+.zeno-app .privacy-glyph {
+  color: #ffc14a;
+  opacity: 0.35;
+}
+
+.zeno-app .activity-heading a,
+.zeno-app .section-heading a {
+  color: #ffc14a;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.zeno-app .glass {
+  background: #0a0a0a;
+  border: 1px solid var(--land-line);
+  border-radius: 0;
+}
+
+.zeno-app .overview-grid {
+  gap: 0;
+  border: 1px solid var(--land-line);
+}
+
+.zeno-app .overview-grid > .balance-surface,
+.zeno-app .overview-grid > .guard-home {
+  border: 0;
+  border-right: 1px solid var(--land-line);
+}
+
+.zeno-app .overview-grid > :last-child {
+  border-right: 0;
+}
+
+.zeno-app .amount-field {
+  background: #050505;
+  border: 1px solid var(--land-line);
+  border-radius: 0;
+}
+
+.zeno-app .amount-field input,
+.zeno-app .field-label input,
+.zeno-app .field-label select {
+  font-family: var(--font-landing-sans), sans-serif;
+  color: #f7f4ef;
+  background: #050505;
+  border-radius: 0;
+  border-color: var(--land-line);
+}
+
+.zeno-app .amount-field input {
+  background: transparent;
+  border: 0;
+  font-family: Michroma, "Space Grotesk", system-ui, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.zeno-app .amount-field strong {
+  color: #ffc14a;
+  font-family: Michroma, "Space Grotesk", system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  font-size: 11px;
+}
+
+.zeno-app .swap-divider {
+  background: var(--land-line);
+}
+
+.zeno-app .swap-divider svg {
+  background: #0a0a0a;
+  border: 1px solid var(--land-line);
+  border-radius: 0;
+  color: #ffc14a;
+}
+
+.zeno-app .privacy-preview,
+.zeno-app .guard-home,
+.zeno-app .quote-result,
+.zeno-app .boundary-note,
+.zeno-app .inline-error,
+.zeno-app .guard-result,
+.zeno-app .activity-empty {
+  border-radius: 0;
+}
+
+.zeno-app .privacy-preview {
+  background: #0a0a0a;
+  border: 1px solid var(--land-line);
+}
+
+.zeno-app .privacy-preview h2 {
+  font-family: Michroma, "Space Grotesk", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 20px;
+}
+
+.zeno-app .visibility-row {
+  border-top-color: var(--land-line);
+}
+
+.zeno-app .visibility-row > svg {
+  color: #ffc14a;
+}
+
+.zeno-app .boundary-note {
+  border: 1px solid var(--land-line);
+  border-style: solid;
+  background:
+    repeating-linear-gradient(
+      -32deg,
+      transparent 0 5px,
+      rgba(255, 193, 74, 0.07) 5px 6px
+    ),
+    #0a0a0a;
+  color: #c9c4ba;
+}
+
+.zeno-app .boundary-note strong {
+  color: #f7f4ef;
+  font-family: Michroma, "Space Grotesk", system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.zeno-app .boundary-note a,
+.zeno-app .guard-home > a {
+  color: #ffc14a;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.zeno-app .consent-row input,
+.zeno-app .privacy-options input {
+  accent-color: #ffc14a;
+}
+
+.zeno-app .guard-result {
+  border-color: rgba(255, 193, 74, 0.35);
+  background: #14110c;
+  color: #ffc14a;
+}
+
+.zeno-app .guard-result.blocked {
+  border-color: rgba(255, 140, 42, 0.45);
+  background: #1a1008;
+  color: #ffb060;
+}
+
+.zeno-app .inline-error {
+  border-color: rgba(255, 140, 42, 0.5);
+  background: #1a1008;
+  color: #ffb060;
+}
+
+.zeno-app .quote-result dl > div {
+  border-bottom-color: var(--land-line);
+}
+
+.zeno-app .activity-empty {
+  border: 1px solid var(--land-line);
+  background: #0a0a0a;
+}
+
+.zeno-app .activity-row {
+  border-bottom-color: var(--land-line);
+}
+
+.zeno-app .wallet-locked-banner {
+  border: 1px solid var(--land-line);
+  background: #0a0a0a;
+  border-radius: 0;
+  margin-bottom: 24px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.zeno-app .wallet-locked-banner strong {
+  font-family: Michroma, "Space Grotesk", system-ui, sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: #ffc14a;
+  font-weight: 400;
+}
+
+.zeno-app .settings-section-label {
+  font-family: Michroma, "Space Grotesk", system-ui, sans-serif;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #ffc14a;
+  font-size: 10px;
+}
+
+.zeno-app .settings-chip {
+  border: 1px solid var(--land-line);
+  background: transparent;
+  color: #ffc14a;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 10px;
+  padding: 6px 10px;
+  border-radius: 0;
+}
+
+.zeno-app .wallet-glass {
+  border-radius: 0;
+  border: 1px solid var(--land-line);
+  background:
+    repeating-linear-gradient(
+      -32deg,
+      transparent 0 5px,
+      rgba(255, 193, 74, 0.07) 5px 6px
+    ),
+    #0a0a0a;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+  backdrop-filter: none;
+}
+
+.zeno-app .glass {
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.zeno-app .text-\[\#C4B5FD\],
+.zeno-app .text-\[\#3DDC97\],
+.zeno-app .text-\[\#b8a7db\] {
+  color: #ffc14a !important;
+}
+
+.zeno-app .bg-gradient-to-t.from-\[\#5B21B6\].to-\[\#C4B5FD\] {
+  background-image: linear-gradient(to top, #ff8c2a, #ffc14a) !important;
+}
+
+.zeno-app .skip-link {
+  background: #ffc14a;
+  color: #140e08;
+}
+
+.zeno-app [data-slot="button"] {
+  border-radius: 0;
+}
+
+.zeno-app [data-slot="card"] {
+  border-radius: 0;
+}
+
+.zeno-app .rounded-full,
+.zeno-app .rounded-2xl,
+.zeno-app .rounded-3xl,
+.zeno-app .rounded-xl,
+.zeno-app .rounded-lg,
+.zeno-app .rounded-md {
+  border-radius: 0 !important;
+}
+
+@media (max-width: 760px) {
+  .zeno-app .app-sidebar {
+    inset: auto 0 0;
+    width: auto;
+    padding: 6px 8px max(8px, env(safe-area-inset-bottom));
+    background: #050505f5;
+    border-top: 1px solid var(--land-line);
+    border-right: 0;
+  }
+
+  .zeno-app .app-sidebar > .brand,
+  .zeno-app .sidebar-label,
+  .zeno-app .sidebar-bottom {
+    display: none;
+  }
+
+  .zeno-app .app-sidebar nav {
+    display: flex;
+    justify-content: space-around;
+  }
+
+  .zeno-app .nav-item {
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+    padding: 9px 2px;
+    font-size: 8px;
+    margin: 0 2px;
+    letter-spacing: 0.06em;
+  }
+
+  .zeno-app .nav-item.active {
+    background: transparent;
+    color: #ffc14a;
+    border-color: transparent;
+  }
+
+  .zeno-app .active-dot {
+    display: none;
+  }
+
+  .zeno-app .app-body {
+    margin: 0;
+  }
+
+  .zeno-app .workspace-footer {
+    padding-bottom: 96px;
+  }
+
+  .zeno-app .overview-grid > .balance-surface,
+  .zeno-app .overview-grid > .guard-home,
+  .zeno-app .feature-link {
+    border-right: 0;
+    border-bottom: 1px solid var(--land-line);
+  }
+
+  .zeno-app .overview-grid > :last-child,
+  .zeno-app .feature-link:last-child {
+    border-bottom: 0;
+  }
+
+  .zeno-app .feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .zeno-app .header-status .mobile-settings {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--land-line);
+    border-radius: 0;
+    color: #f7f4ef;
+  }
+
+  .zeno-app .header-status .mobile-settings:hover {
+    border-color: #ffc14a;
+    color: #ffc14a;
+  }
+}

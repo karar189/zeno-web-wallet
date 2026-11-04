@@ -1,0 +1,6 @@
+html, body { margin: 0; width: 360px; height: 600px; background: #0b0b0b; overflow: hidden; }
+iframe { border: 0; width: 360px; height: 600px; display: block; }
+#offline { position: absolute; inset: 0; display: grid; place-content: center; gap: 8px; padding: 24px;
+  color: #efeee8; font: 14px/1.5 system-ui, sans-serif; text-align: center; background: #0b0b0b; }
+#offline strong { color: #ffc14a; }
+[hidden] { display: none !important; }

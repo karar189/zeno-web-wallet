@@ -1,0 +1,38 @@
+services:
+  instant-sync:
+    build:
+      context: .
+      args:
+        DEVTOOL_REF: ${DEVTOOL_REF:-main}
+    restart: unless-stopped
+    environment:
+      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN:-http://localhost:3000}
+      SYNC_INTERVAL_MS: ${SYNC_INTERVAL_MS:-30000}
+      SYNC_CONCURRENCY: ${SYNC_CONCURRENCY:-1}
+      MAX_ACCOUNTS: ${MAX_ACCOUNTS:-100}
+      LWD_SERVER: ${LWD_SERVER:-zecrocks}
+      ALLOW_MAINNET: "0"
+    volumes:
+      - sync-data:/data
+    expose:
+      - "8790"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - instant-sync
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  sync-data:
+  caddy-data:
+  caddy-config:
