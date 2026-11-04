@@ -97,24 +97,30 @@ function SoundSetting() {
             playSound("success");
           }
         }}
-        className={cn(
-          "relative h-7 w-12 shrink-0 border transition-colors",
-          enabled
-            ? "border-[#ffc14a] bg-[#ffc14a]/20"
-            : "border-[rgba(244,241,234,0.22)] bg-[#050505]",
-        )}
+        className="group grid h-11 w-16 shrink-0 place-items-center"
       >
         <span
           className={cn(
-            "absolute top-0.5 grid size-6 place-items-center bg-[#0a0a0a] text-[#f7f4ef]/80 transition-[left]",
-            enabled ? "left-[1.35rem] text-[#ffc14a]" : "left-0.5",
+            "relative block h-6 w-14 border transition-colors",
+            enabled
+              ? "border-[#ffc14a] bg-[#ffc14a]/15"
+              : "border-[rgba(244,241,234,0.22)] bg-[#050505] group-hover:border-[rgba(244,241,234,0.4)]",
           )}
         >
-          {enabled ? (
-            <Volume2 className="size-3.5" strokeWidth={1.6} />
-          ) : (
-            <VolumeX className="size-3.5" strokeWidth={1.6} />
-          )}
+          <span
+            className={cn(
+              "absolute top-1/2 grid h-4 w-6 -translate-y-1/2 place-items-center transition-[left,background-color]",
+              enabled
+                ? "left-[calc(100%-27px)] bg-[#ffc14a] text-[#140e08]"
+                : "left-[3px] bg-[#8c8c8c] text-[#0a0a0a]",
+            )}
+          >
+            {enabled ? (
+              <Volume2 className="size-2.5" strokeWidth={2.2} />
+            ) : (
+              <VolumeX className="size-2.5" strokeWidth={2.2} />
+            )}
+          </span>
         </span>
       </button>
     </SettingsRow>

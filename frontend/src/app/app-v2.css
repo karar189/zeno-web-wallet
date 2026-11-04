@@ -148,6 +148,50 @@
   margin-left: auto;
   color: #6c6c66;
 }
+/* Desktop: the wallet column sets the row height and the right column matches it, whatever
+   the active tab holds. The tab panel takes the leftover space and scrolls inside itself. */
+@media (min-width: 981px) {
+  .overview-v2 {
+    align-items: stretch;
+  }
+  .overview-v2-wallet {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    min-height: 620px;
+  }
+  .overview-v2-wallet > .wallet-popup-embed,
+  .overview-v2-wallet .wallet-popup.is-embedded {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .overview-v2-side {
+    display: flex;
+    flex-direction: column;
+    contain: size;
+  }
+  .overview-v2-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  .overview-v2-tabs {
+    flex: none;
+  }
+  .overview-v2-tabpanel {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #3a3a36 transparent;
+  }
+  .overview-v2-tools {
+    flex: none;
+  }
+}
 @media (max-width: 980px) {
   .overview-v2 {
     grid-template-columns: 1fr;
@@ -302,4 +346,9 @@
 .password-input-toggle:focus-visible {
   outline: 2px solid #e9ce63;
   outline-offset: -2px;
+}
+
+/* Markets tab: breathing room between the "Tokens" heading and the list. */
+.zeno-app .token-panel > .section-heading {
+  padding-bottom: 16px;
 }
