@@ -13,6 +13,7 @@ import {
 import {
   ArrowUpRight,
   AtSign,
+  Download,
   Check,
   Eye,
   KeyRound,
@@ -49,6 +50,9 @@ function cipher(seed: string, length: number): string {
 
 /* ───────────────────────── Hero lede (sits under the hero) ───────────────────────── */
 
+/** Built by `npm run package:extension` from the repo's extension/ folder. */
+export const EXTENSION_DOWNLOAD = "/downloads/zeno-wallet-extension.zip";
+
 export function HeroLede() {
   return (
     <motion.div
@@ -67,8 +71,12 @@ export function HeroLede() {
             Open wallet <ArrowUpRight size={18} />
           </Link>
         </Magnetic>
-        <a href="#how" className="ghost-action">
-          See how it works
+        <a
+          href={EXTENSION_DOWNLOAD}
+          download
+          className="ghost-action inline-flex items-center gap-2"
+        >
+          <Download size={14} /> Get the extension
         </a>
       </motion.div>
     </motion.div>

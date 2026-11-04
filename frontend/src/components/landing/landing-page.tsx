@@ -6,6 +6,7 @@ import { LandingCursor } from "@/components/landing/landing-cursor";
 import { Magnetic, Marquee, ScrambleText, ScrollProgress } from "@/components/landing/landing-fx";
 import {
   Architecture,
+  EXTENSION_DOWNLOAD,
   FeatureBento,
   HeroLede,
   HowItWorks,
@@ -17,7 +18,7 @@ import "@/components/landing/landing-sections.css";
 import { softEase } from "@/components/motion/motion-root";
 import Hero62 from "@/components/originkit/hero-62";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Download } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -188,15 +189,23 @@ export function LandingPage() {
           <motion.h2 variants={rise}>
             <ScrambleText text="Make it deliberate." duration={1100} />
           </motion.h2>
-          <motion.div variants={rise}>
+          <motion.div variants={rise} className="landing-close-actions">
             <Magnetic>
               <Link href="/dashboard" className="solid-action is-large">
                 Open your wallet <ArrowUpRight size={20} />
               </Link>
             </Magnetic>
+            <a
+              href={EXTENSION_DOWNLOAD}
+              download
+              className="ghost-action inline-flex items-center gap-2"
+            >
+              <Download size={14} /> Download the Chrome extension
+            </a>
           </motion.div>
           <motion.p variants={rise}>
-            Zcash testnet. Funds have no monetary value.
+            Zcash testnet. Funds have no monetary value. The extension is a popup for the
+            app running on your machine: unzip it, then Load unpacked in chrome://extensions.
           </motion.p>
         </motion.section>
       </main>

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Zeno Wallet (dev)",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shielded Zcash wallet. Popup for the local Zeno app; Expand opens the full dashboard.",
   "action": {
     "default_title": "Zeno Wallet",
