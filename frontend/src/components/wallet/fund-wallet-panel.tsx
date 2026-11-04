@@ -11,7 +11,6 @@ import {
   submitFaucetClaim,
   catchUpWallet,
   syncAndRead,
-  walletNeedsScan,
 } from "@/features/faucet/client";
 import {
   clearStoredClaim,
@@ -203,7 +202,7 @@ export function FundWalletPanel() {
       let resolvedAddress: string | null = null;
       let nextReadiness =
         readinessResult.status === "fulfilled" ? readinessResult.value : null;
-      if (nextReadiness && walletNeedsScan(nextReadiness)) {
+      if (nextReadiness) {
         try {
           const synced = await catchUpWallet();
           if (cancelled) {

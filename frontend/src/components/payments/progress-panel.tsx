@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Circle, LoaderCircle, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { ChainLinks } from "@/components/payments/chain-links";
@@ -21,6 +22,44 @@ const rowLabel = {
   confirmation: "Confirmation",
   detection: "Recipient detection",
 } as const;
+
+const DONE = new Set(["submitted", "confirmed", "detected"]);
+const POLL_MS = 15_000;
+
+type StepStatus = "done" | "active" | "pending" | "problem";
+
+/** Steps run in order: the first one that is not done is the active one. */
+function stepStatuses(values: readonly string[], state: string): StepStatus[] {
+  const halted = state === "failed" || state === "unknown" || state === "not_ready";
+  let activeFound = false;
+  return values.map((value) => {
+    if (DONE.has(value)) return "done";
+    if (value === "unknown") return "problem";
+    if (activeFound) return "pending";
+    activeFound = true;
+    return halted ? "problem" : "active";
+  });
+}
+
+function StepIcon({ status }: { status: StepStatus }) {
+  const base = "size-4 shrink-0";
+  switch (status) {
+    case "done":
+      return <Check aria-label="Done" className={`${base} text-[#7ddc8b]`} strokeWidth={2.5} />;
+    case "active":
+      return (
+        <LoaderCircle
+          aria-label="In progress"
+          className={`${base} text-[#f5c25b] motion-safe:animate-spin`}
+          strokeWidth={2.5}
+        />
+      );
+    case "problem":
+      return <TriangleAlert aria-label="Needs attention" className={`${base} text-[#f08a5d]`} />;
+    default:
+      return <Circle aria-label="Waiting" className={`${base} text-muted-foreground opacity-50`} />;
+  }
+}
 
 export function ProgressPanel() {
   const { busy, record, track } = usePaymentStore();
@@ -52,6 +91,17 @@ export function ProgressPanel() {
           : "step",
     );
   }, [lifecycleState]);
+
+  const statuses = board
+    ? stepStatuses([board.submission, board.confirmation, board.detection], board.state)
+    : [];
+  // Keep checking on its own while a submitted payment is still waiting on a step.
+  const waiting = Boolean(record?.submission?.acceptedForBroadcast) && statuses.includes("active");
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setInterval(() => void track(), POLL_MS);
+    return () => clearInterval(timer);
+  }, [waiting, track]);
 
   if (!record || !board) {
     return (
@@ -98,7 +148,10 @@ export function ProgressPanel() {
             <li key={key} className="flex items-start gap-3">
               <span className="text-muted-foreground w-6 text-sm">{index + 1}</span>
               <div>
-                <p className="text-sm font-medium">{rowLabel[key]}</p>
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  {rowLabel[key]}
+                  <StepIcon status={statuses[index]} />
+                </p>
                 <p className="text-muted-foreground text-sm">{value.replaceAll("_", " ")}</p>
               </div>
             </li>

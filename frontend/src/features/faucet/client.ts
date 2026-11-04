@@ -273,7 +273,9 @@ function syncStopped(readiness: WalletReadiness): boolean {
 
 async function scanUntilCurrent(): Promise<WalletReadiness> {
   let readiness = await getWalletReadiness();
-  for (let pass = 0; pass < SCAN_PASSES && walletNeedsScan(readiness); pass += 1) {
+  // Always run at least one pass. "synced" means within 10 blocks of the tip, so a payment
+  // mined in those blocks would otherwise never be fetched until the wallet fell further behind.
+  for (let pass = 0; pass < SCAN_PASSES && (pass === 0 || walletNeedsScan(readiness)); pass += 1) {
     if (syncStopped(readiness)) {
       break;
     }

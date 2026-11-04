@@ -1,33 +1,459 @@
-# Zeno Wallet
+# Zeno
 
-**A Zcash testnet wallet that shows you exactly what others can see before you pay. Shielded by default, signed on your machine, and instant to open.**
+**The instant shielded Zcash wallet.** Zeno is a Zcash wallet that is shielded by default, signs on your own machine, shows you what others can see before you pay, and has **Instant Sync**: open the app and your private balance is already there.
 
-Built for the Free Society Hack 2026 (Mumbai), Privacy track. Theme: *The first five minutes*, with viewing-key work from *Privacy beyond the transaction*. Testnet only.
+> ⚠️ **Testnet only.** Built for the Free Society Hack 2026 (Mumbai), Privacy track. Instant Sync is opt-in. Its Nitro Enclave mode is implemented, but no attested build has been published yet, so today's sync servers run in "not attested" dev mode. Do not use mainnet keys.
 
-## The problem
+---
 
-Zcash's privacy depends on choices most users never see.
+## Why Zeno
 
-- Measured usage has been mostly transparent: 73.5% transparent vs 6.3% shielded transactions in [Kappos et al., USENIX Security 2018](https://www.usenix.org/system/files/conference/usenixsecurity18/sec18-kappos.pdf).
-- Shielded supply grew from about 11% to about 30% in 2025, but mostly through partially shielded flows; fully shielded transfers stay a small share ([Coin Metrics](https://coinmetrics.substack.com/p/state-of-the-network-issue-338), [Messari](https://messari.io/report/understanding-zcash-a-comprehensive-overview)).
-- Users get stuck or confused by transparent funds: [coinbase rewards stuck in a t-address](https://forum.zcashcommunity.com/t/coinbase-rewards-sent-to-transparent-vs-shielded/43876), ["How do you communicate all of these subtleties to a user…"](https://forum.zcashcommunity.com/t/why-does-zashi-only-allow-1-transparent-address/51538), [exchange withdrawals arrive transparent](https://zechub.substack.com/p/private-vs-transparent).
-- Viewing keys exist, but [no tooling turns one into something an accountant can use](https://forum.zcashcommunity.com/t/is-anyone-actually-using-viewing-keys-for-business-accounting/56300).
-- Shielded wallets are slow to open: they scan the chain before showing a balance.
+Zcash's privacy depends on choices most users never see, and shielded wallets are slow to open.
 
-**Who it's for:** someone making their first shielded payments, often with ZEC that arrived transparent from an exchange.
+- **Most usage is still transparent.** 73.5% transparent vs 6.3% shielded transactions ([Kappos et al., USENIX Security 2018](https://www.usenix.org/system/files/conference/usenixsecurity18/sec18-kappos.pdf)). Shielded supply grew from ~11% to ~30% in 2025, mostly through partially shielded flows ([Coin Metrics](https://coinmetrics.substack.com/p/state-of-the-network-issue-338)).
+- **Users get stuck with transparent funds** from exchanges and mining rewards ([forum](https://forum.zcashcommunity.com/t/coinbase-rewards-sent-to-transparent-vs-shielded/43876), [ZecHub](https://zechub.substack.com/p/private-vs-transparent)).
+- **Viewing keys exist, but [no tooling turns one into something an accountant can use](https://forum.zcashcommunity.com/t/is-anyone-actually-using-viewing-keys-for-business-accounting/56300).**
+- **Shielded wallets make you wait.** They must trial-decrypt every shielded output since you last opened the app. Sync time scales with the **whole chain's activity**, not yours.
 
-## What Zeno does
+Zeno keeps your **viewing key** synced on a server, so that work is already done when you open the app. In enclave mode the server runs inside an **AWS Nitro Enclave** and the browser verifies its attestation before sending the key, so the operator cannot read it (see [Trusted Execution Environment](#trusted-execution-environment)).
 
-1. **Shielded by default.** Receive, send and faucet funding use the shielded unified address. Transparent is opt-in and labeled public. Shield transparent funds in one tap.
-2. **Privacy review before every send.** Plain-language checks: shielded receiver, swap provider involvement, fee, and what your network connection still reveals. Requirements are re-checked at approval.
-3. **Pay by name.** `alice.zcash` resolves through the Zcash Names indexer into the same review.
-4. **Viewing keys, scoped.** Export a viewing key for a *dedicated* account and scan it read-only at `/audit`.
-5. **Instant Sync (opt-in).** A sync server keeps your viewing key synced, so balance and history render the moment the app opens. Local sync stays the source of truth and is the only thing used for spending. See [instant-sync-server/](./instant-sync-server/README.md).
-6. **Wallet everywhere.** The same wallet panel runs on the dashboard, in the header, and as a browser-extension popup ([extension/](./extension/README.md)).
+| Moment | Typical shielded wallet | Zeno with Instant Sync |
+|---|---|---|
+| Open after a few days | Wait for catch-up scan | Cached balance shown instantly (~2 ms from the server) |
+| Incoming payment | Visible after next scan | Picked up on the server's next resync (every 30 s) |
+| First sync of a wallet | Scan from birthday in the client | Server scans from birthday (41.7 s for the demo wallet) |
 
-## Evidence (testnet)
+## Features
 
-Found by Instant Sync from the demo wallet's viewing key, on public Zcash testnet via `testnet.zec.rocks`:
+- 🛡️ **Shielded by default:** receive, send and faucet funding use the shielded unified address. Transparent is opt-in and labeled public, and you can shield transparent funds in one tap.
+- 🔍 **Privacy review before every send:** plain-language checks for shielded receiver, swap provider involvement, fee, and what your network connection still reveals. Requirements are re-checked at approval.
+- 🌲 **Ironwood (NU7):** Ironwood notes received and spent on testnet, shown on their own balance row.
+- 🏷️ **Pay by name:** `alice.zcash` resolves through the Zcash Names indexer into the same review.
+- 🔑 **Scoped viewing keys:** export a viewing key for a *dedicated* account and scan it read-only at `/audit`.
+- ⚡ **Instant Sync (opt-in):** cached balance and history served from the sync server.
+- 🔒 **Spending stays local:** proving and signing run in a loopback Rust service. No server ever receives a spending key.
+- 🪂 **Graceful fallback:** if the sync server is down or slow (>3 s), Zeno silently uses local sync.
+- 🧩 **Wallet everywhere:** the same wallet panel runs on the dashboard, in the header, and as a browser-extension popup.
+- 🔁 **NEAR Intents swaps (mainnet, experimental):** a swap exit exists at `/swap`, but 1Click has no testnet, so it is outside this testnet submission and has not been exercised with funds.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Browser["Zeno web app (Next.js, localhost:3000)"]
+        V["Vault<br/>(encrypted seed, IndexedDB)"]
+        TS["Instant Sync client<br/>(attestation verifier)"]
+    end
+
+    subgraph Local["Wallet service (Rust, 127.0.0.1:8787)"]
+        WS["Local sync<br/>(source of truth)"]
+        SP["Prove, sign, broadcast<br/>(local only)"]
+    end
+
+    subgraph Server["instant-sync-server (Node 22)"]
+        API["/v1/attestation<br/>/v1/register<br/>/v1/state"]
+        W["Background<br/>sync worker"]
+        DB[("Per-account<br/>view-only wallets")]
+    end
+
+    DT["zcash-devtool<br/>(view-only sync)"]
+    LWD["Testnet lightwalletd<br/>testnet.zec.rocks"]
+
+    V -- "unlock (ciphertext + password)" --> WS
+    WS -- "UFVK for Instant Sync" --> TS
+    TS -- "UFVK sealed to server key" --> API
+    API -- "cached state" --> TS
+    API --> DB
+    W --> DT
+    DT --> DB
+    DT -- "compact blocks" --> LWD
+    WS -- "compact blocks, broadcast" --> LWD
+    SP --> LWD
+```
+
+**How Instant Sync works**
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant A as Zeno web app
+    participant WS as Wallet service (local)
+    participant S as Sync server
+    participant D as zcash-devtool
+    participant L as lightwalletd
+
+    U->>A: Settings → Instant Sync → On
+    A->>S: GET /v1/attestation?nonce=N
+    S-->>A: Attestation doc + server public key
+    A->>A: Verify (enclave mode) or label "not attested" (dev)
+    A->>WS: POST /api/wallet/instant-sync/viewing-key
+    WS-->>A: UFVK (uviewtest…), birthday
+    A->>S: POST /v1/register {sealed: UFVK, birthday, stateKey}
+    S->>D: init-fvk (view-only account)
+    S-->>A: 201 {token}
+
+    loop Every 30 s
+        S->>D: sync
+        D->>L: Fetch compact blocks
+        S->>D: balance --json, list-tx --json
+        S->>S: Cache state
+    end
+
+    U->>A: Open app
+    A->>S: GET /v1/state (Bearer token, 3 s timeout)
+    S-->>A: Cached balance + history (sealed to stateKey)
+    A->>U: Render instantly
+
+    par Background
+        WS->>L: Local sync
+        A->>A: Reconcile (local wins)
+    end
+```
+
+1. The user turns on Instant Sync. The app fetches the server's attestation and public key, gets the primary account's **UFVK** from the local wallet service, encrypts it to the server, and registers. It receives a session token.
+2. The server imports the key as a **view-only** account and resyncs it every 30 seconds.
+3. When the app opens, it fetches the **cached** state and renders it immediately.
+4. Local sync keeps running in the background. If the two disagree, local wins. Spending only ever uses local state.
+
+---
+
+## Repository layout
+
+```
+.
+├── frontend/                   # Next.js 16 web app (dashboard, /audit, /popup for the extension)
+├── engine/
+│   └── services/
+│       └── wallet-service/     # Rust: seed vault, sync, quote, prove, sign, broadcast, faucet proxy
+├── instant-sync-server/
+│   ├── server.mjs              # zero-dependency Node 22 server
+│   ├── sealed.mjs              # ECDH P-256 + AES-256-GCM sealed registration and state
+│   ├── enclave/                # Nitro Enclave image, attestation agent, parent services, build.sh
+│   ├── test/                   # mock devtool + mock attestation, smoke and enclave tests
+│   ├── Dockerfile              # builds zcash-devtool + server image
+│   ├── docker-compose.yml      # server + Caddy (auto TLS)
+│   ├── Caddyfile
+│   └── DEPLOY.md
+├── extension/                  # MV3 popup that frames localhost:3000/popup
+├── docs/                       # wallet, payments, disclosure, privacy review
+└── DEMO.md
+```
+
+`backend/` (legacy Nest scaffold) and `engine/services/payment-api` are not used by any page.
+
+---
+
+## Getting started
+
+### Prerequisites
+
+- Node 22+
+- Rust toolchain (`curl https://sh.rustup.rs -sSf | sh`)
+- git
+- Internet access to `testnet.zec.rocks`
+- Docker (optional, for the deploy image)
+
+### 1. Build the sync engine (optional, for Instant Sync)
+
+Start this first; it takes 10–20 minutes.
+
+```bash
+git clone https://github.com/zcash/zcash-devtool
+cd zcash-devtool
+cargo build --release
+# binary: target/release/zcash-devtool
+```
+
+### 2. Run the wallet service
+
+```bash
+cd engine/services/wallet-service
+WALLET_NETWORK=testnet WALLET_API_BIND=127.0.0.1:8787 WALLET_DATA_DIR=$PWD/wallet-data \
+LIGHTWALLETD_ENDPOINT=https://testnet.zec.rocks:443 cargo run --release
+```
+
+It binds to loopback only and accepts requests only from `http://localhost:3000`. **Never expose port 8787**: create and unlock are not behind a bearer token.
+
+### 3. Run the sync server (optional)
+
+```bash
+cd instant-sync-server
+PORT=8795 HOST=127.0.0.1 \
+DEVTOOL_BIN=/path/to/zcash-devtool/target/release/zcash-devtool \
+npm start
+```
+
+### 4. Run the tests (no network needed)
+
+```bash
+cd instant-sync-server
+npm test
+```
+
+### 5. Run the web app
+
+```bash
+cd frontend
+cp .env.example .env.local
+# set NEXT_PUBLIC_WALLET_BACKEND=live
+# for Instant Sync, also set NEXT_PUBLIC_INSTANT_SYNC_URL=http://127.0.0.1:8795
+npm install && npm run dev
+```
+
+Open **http://localhost:3000** (not `127.0.0.1`; that is the only origin the services accept). Create or unlock a wallet, fund it from the faucet panel, then send from **Send**. To try Instant Sync, open **Settings → Instant Sync** and turn it on.
+
+With `NEXT_PUBLIC_WALLET_BACKEND` unset or set to `simulated`, the app is a click-through UI that never broadcasts. `NEXT_PUBLIC_*` values are read at startup, so restart after changing them.
+
+---
+
+## Configuration
+
+**Frontend** (`frontend/.env.local`)
+
+| Variable | Default | Description |
+|---|---|---|
+| `NEXT_PUBLIC_WALLET_BACKEND` | `simulated` | `live` to use the local wallet service |
+| `NEXT_PUBLIC_WALLET_URL` | `http://127.0.0.1:8787` | Testnet wallet service (must be loopback) |
+| `NEXT_PUBLIC_INSTANT_SYNC_URL` | — | Sync server URL. Instant Sync is unavailable when unset |
+
+**Sync server** (`instant-sync-server`)
+
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `8790` | HTTP port (8787/8788 are the local wallet services) |
+| `HOST` | `0.0.0.0` | Bind address |
+| `DEVTOOL_BIN` | `zcash-devtool` | Path to the `zcash-devtool` binary |
+| `DATA_DIR` | `./data` | Wallet directories + `accounts.json` (mode 700) |
+| `LWD_SERVER` | `zecrocks` | lightwalletd server alias |
+| `SYNC_INTERVAL_MS` | `30000` | Background resync per account |
+| `SYNC_CONCURRENCY` | `1` | Parallel account syncs |
+| `ALLOWED_ORIGIN` | `http://localhost:3000` | CORS origin of the web app |
+| `MAX_ACCOUNTS` | `100` | Registration cap |
+| `BALANCE_MIN_CONFIRMATIONS` | `1` | Matches the local wallet service so balances reconcile |
+| `TRUST_PROXY` | `0` | `1` behind Caddy so rate limits use `X-Forwarded-For` |
+| `ENCLAVE` | `0` | `1` inside the Nitro Enclave |
+| `REQUIRE_SEALED` | = `ENCLAVE` | Refuse plaintext `{ufvk}` registrations |
+| `ALLOW_MAINNET` | `0` | Must stay `0`; `uview1` keys are refused |
+
+Full list in [instant-sync-server/README.md](./instant-sync-server/README.md).
+
+---
+
+## API
+
+All authenticated routes take `Authorization: Bearer <token>`.
+
+### `GET /v1/attestation?nonce=<hex>`
+
+In an enclave: `{ "attested": true, "document": "<base64 Nitro attestation>" }`, which binds the server's public key and your nonce. Outside an enclave: `{ "attested": false, "document": null, "publicKey": "…" }` (same encryption, no proof).
+
+### `POST /v1/register`
+
+```json
+{ "sealed": { "epk": "…", "iv": "…", "ct": "…" } }
+```
+
+`ct` is `{ ufvk, birthday, stateKey }` encrypted with ECDH P-256 → HKDF-SHA256 → AES-256-GCM. Dev servers also accept a plaintext `{ "ufvk": "uviewtest1…", "birthday": 3000000 }`.
+
+→ `201 { "token": "…", "status": "registering" }`
+
+Only testnet UFVKs (`uviewtest…`) are accepted. Spending keys, seed phrases and mainnet keys get `400`. Rate limit: 5 per hour per IP.
+
+### `GET /v1/state`
+
+Returns the cached state immediately (sealed to `stateKey` for sealed registrations):
+
+```json
+{
+  "status": "ready",
+  "balance": {
+    "total": "78975000",
+    "ironwood_spendable": "78975000",
+    "orchard_spendable": "0",
+    "sapling_spendable": "0",
+    "transparent_spendable": "0"
+  },
+  "txs": [{ "txid": "…", "mined_height": 4561983 }],
+  "chainTipHeight": 4562010,
+  "lastSyncedAt": "2026-11-04T12:00:00Z",
+  "stalenessMs": 4200
+}
+```
+
+Balances are zatoshi strings. Status is one of `registering`, `syncing`, `ready`, `error`.
+
+### `DELETE /v1/account`
+
+Stops any running sync and deletes the account's data.
+
+### `GET /health`
+
+Liveness and queue info.
+
+---
+
+## Trust model
+
+**Instant Sync is opt-in and off by default.**
+
+| | Dev server (not attested) | Nitro Enclave mode |
+|---|---|---|
+| Funds at risk? | **No.** Spending keys never leave your machine | No |
+| Server sees history? | Yes, the operator is trusted. Settings labels it "not attested" | No. Keys, balances and txids live only in enclave RAM |
+| Verifiable code? | Open source | Reproducible build; the client checks PCR0/1/2 against the published measurements |
+
+**What everyone in the picture can see**
+
+- **On chain:** for shielded-to-shielded sends, sender, recipient, amount and memo are encrypted. Transparent sends are public, and the app says so before you approve.
+- **Your seed:** encrypted in the browser (Argon2id + ChaCha20-Poly1305, stored in IndexedDB). Decrypted only by the wallet service on `127.0.0.1`, in memory, while unlocked.
+- **lightwalletd (`testnet.zec.rocks`):** sees your IP address, when you sync, and the bytes of transactions you broadcast. It cannot decrypt shielded notes.
+- **Instant Sync operator (dev mode):** can see all of the primary account's shielded activity, including future activity. A viewing key cannot be revoked; turning Instant Sync off deletes the server's copy.
+- **No Zeno account, analytics, or remote log.**
+
+**Server security measures**
+
+- View-only keys only; anything else is rejected
+- Tokens stored only as SHA-256 hashes
+- UFVKs and tokens are never logged; errors are redacted
+- Data directory permissions are `700`
+- Known limitation: the UFVK appears in the child process arguments. On a shared host any local user can see it in `ps`; inside the enclave there are no other users.
+
+---
+
+## Trusted Execution Environment
+
+A sync server has to see a viewing key to find your notes. Running it in an **AWS Nitro Enclave**, an isolated VM with no disk, no direct network and no operator access, makes that key unreachable to the host OS and the operator. The browser hands over the key only after verifying, through remote attestation, that the enclave is running the exact open-source build we published.
+
+**Status:** implemented in code (server, enclave image, attestation agent, parent services, in-browser verifier, reproducible build). The first attested deployment and its published PCRs are still pending, so `frontend/src/features/instant-sync/enclave-measurements.json` has `null` PCRs and clients currently treat servers as "not attested".
+
+### Architecture
+
+```mermaid
+flowchart TB
+    subgraph Client["Zeno web app"]
+        V["Attestation verifier<br/>(AWS root, COSE sig, nonce, PCR0/1/2)"]
+        T["Instant Sync client"]
+        L["Local sync + spending"]
+    end
+
+    subgraph Host["EC2 parent instance (untrusted)"]
+        C["Caddy (TLS)"]
+        R["vsock relay"]
+        P["vsock-proxy<br/>(lightwalletd allowlist)"]
+    end
+
+    subgraph Enclave["Nitro Enclave (attested, RAM only)"]
+        A["Attestation agent (NSM)"]
+        S["instant-sync-server<br/>+ zcash-devtool"]
+        K["P-256 key pair<br/>(created in enclave memory)"]
+    end
+
+    LWD["lightwalletd"]
+
+    V -- "1. fetch + verify attestation" --> C
+    T -- "2. UFVK sealed to enclave key" --> C
+    C --> R
+    R -- "vsock" --> S
+    S --> A
+    K --> S
+    S -- "TLS terminates in enclave" --> P
+    P --> LWD
+    S -- "3. state sealed to client key" --> R
+    R --> T
+```
+
+### Attestation and key exchange
+
+```mermaid
+sequenceDiagram
+    participant A as Zeno web app
+    participant H as Untrusted host
+    participant E as Nitro Enclave
+
+    A->>H: GET /v1/attestation?nonce=N
+    H->>E: forward (vsock)
+    E-->>A: Attestation doc (PCRs, enclave public key, nonce) signed by AWS Nitro
+    A->>A: Verify AWS root + cert chain, COSE signature, nonce, freshness, PCR0/1/2
+    alt Verification fails
+        A->>A: Refuse to register (local sync only)
+    else Verified
+        A->>E: ECDH P-256 → AES-256-GCM {UFVK, birthday, stateKey}
+        E->>E: Sync view-only wallet
+        E-->>A: State encrypted to stateKey
+        A->>A: Render, reconcile with local sync
+    end
+```
+
+### Design decisions
+
+| Decision | Choice | Why |
+|---|---|---|
+| TEE platform | AWS Nitro Enclaves | No extra cost (pay for EC2 only), built-in attestation, no SGX-style memory limits |
+| Channel | ECDH P-256 + HKDF + AES-256-GCM to a key bound in the attestation doc | TLS terminates on the parent, so it can't protect against the operator. The host relays ciphertext only |
+| Code integrity | Reproducible build (pinned images, crates, BuildKit, `SOURCE_DATE_EPOCH`) + committed PCRs | Anyone can run `./enclave/build.sh --verify`; the client refuses unknown and debug-mode builds |
+| Persistence | None: wallet data lives in enclave RAM | Restarting the enclave wipes it; clients get `401` and re-register automatically |
+| Network | Outbound only to lightwalletd via an allowlisted `vsock-proxy` | The enclave can't phone home anywhere else |
+| No fallback | When PCRs are published, a failed attestation means no registration | A downgrade to a non-enclave server can't be forced |
+
+### Threat model
+
+| Threat | Mitigation |
+|---|---|
+| Malicious operator or host OS | Enclave memory is isolated; the host sees bearer tokens, ciphertext sizes and timing only |
+| Swapped or backdoored server code | Client verifies PCR0/1/2 against the published reproducible build |
+| Traffic analysis | **Not covered yet:** the enclave does not hide that an account exists, when it syncs, or response sizes |
+| Denial of service | The operator can delete accounts or stop the server; the client falls back to local sync |
+| Enclave compromise (e.g. side channel) | **Funds stay safe**: no spending keys, ever. Exposure is the viewing key's history |
+| Trust in AWS hardware | Documented assumption; the path to zero-trust is Tachyon oblivious sync |
+
+### Running an enclave
+
+Full steps in [instant-sync-server/DEPLOY.md](./instant-sync-server/DEPLOY.md#nitro-enclave-deployment). In short:
+
+```bash
+# On a Nitro-enabled EC2 instance (c6i.xlarge, Nitro Enclave enabled at launch)
+sudo dnf install -y aws-nitro-enclaves-cli aws-nitro-enclaves-cli-devel socat jq
+sudo cp enclave/parent/allocator.yaml enclave/parent/vsock-proxy.yaml /etc/nitro_enclaves/
+sudo systemctl enable --now nitro-enclaves-allocator
+
+# Reproducible build → enclave/out/instant-sync.eif + measurements.json (commit it, redeploy the frontend)
+DEVTOOL_REF=<zcash-devtool commit> ALLOWED_ORIGIN=https://<app-origin> ./enclave/build.sh
+
+sudo install -D enclave/out/instant-sync.eif /opt/zeno/instant-sync.eif
+sudo cp enclave/parent/*.service /etc/systemd/system/
+sudo systemctl enable --now zeno-lwd-proxy zeno-enclave zeno-vsock-in
+nitro-cli describe-enclaves | jq '.[0].Measurements'   # must equal enclave/measurements.json
+```
+
+Never run with `--debug-mode` in production: debug enclaves report all-zero PCRs and clients refuse them.
+
+---
+
+## Deployment
+
+See [instant-sync-server/DEPLOY.md](./instant-sync-server/DEPLOY.md). In short: an EC2 **c6i.xlarge** in `ap-south-1` with **Nitro Enclave enabled at launch**, running `docker compose up -d` behind Caddy for automatic TLS, or the enclave setup above.
+
+The frontend can be deployed on its own (e.g. Vercel). Without a local wallet service it runs in simulated mode; the live wallet needs the Rust service on the user's machine.
+
+---
+
+## Roadmap
+
+- [x] **v0:** Instant Sync server on testnet, web integration, local fallback
+- [x] **M1:** AWS Nitro Enclave, attestation verification in the client, reproducible builds *(first attested deployment and published PCRs pending)*
+- [ ] **M2:** IVK-only mode (receive-only visibility), response padding, security audit
+- [ ] **M3:** Nym for lightwalletd traffic, send and review inside the extension popup, viewing-key export to accountant-ready CSV
+- [ ] **M4:** open-source client SDK for other wallets, mainnet beta, migration path to Tachyon oblivious sync
+
+---
+
+## Demo
+
+See [DEMO.md](./DEMO.md): cold-open the same wallet with Instant Sync off vs on with the timer visible, then watch a shielded payment land.
+
+**Testnet evidence**, found by Instant Sync from the demo wallet's viewing key via `testnet.zec.rocks`:
 
 | txid | Mined | What |
 |---|---|---|
@@ -35,105 +461,25 @@ Found by Instant Sync from the demo wallet's viewing key, on public Zcash testne
 | `c2267ce983ca1f530015b13424f7bfc9090cbfe4eccffae41779594089150c76` | 4,561,446 | Sent 0.0101 TAZ, shielded (Ironwood change) |
 | `fdf1921e895c9472426d787402c8cf23b1d17269011068bb3c450320ac8f9eea` | 4,561,983 | Sent 0.20015 TAZ, shielded (Ironwood change) |
 
-Instant Sync first sync for this wallet: **41.7 s** from birthday to ready; cached state then serves in ~2 ms. Ironwood spendable reported: 0.78975 TAZ, matching the two sends.
+First sync for this wallet: **41.7 s** from birthday to ready; cached state then serves in ~2 ms. Ironwood spendable reported: 0.78975 TAZ, matching the two sends.
 
 <!-- TODO before submitting: add the shielded txid sent during the hack on 2026-11-04 here. -->
 
-## Privacy and trust
+More detail: [wallet](./docs/wallet.md) · [shielded payments](./docs/shielded-payments.md) · [selective disclosure](./docs/selective-disclosure.md) · [privacy review](./docs/privacy-workspace.md) · [extension](./extension/README.md)
 
-- **On chain:** for shielded-to-shielded sends, sender, recipient, amount and memo are encrypted. Transparent sends are public, and the app says so before you approve.
-- **Seed:** encrypted in the browser (IndexedDB). Decrypted only by the wallet service on `127.0.0.1`, in memory, while unlocked. It never leaves your machine.
-- **Local data:** the wallet service keeps its wallet database under `wallet-data/` on your machine. There is no Zeno account, analytics, or remote log.
-- **lightwalletd (`testnet.zec.rocks`)** sees your IP address, when you sync, and the bytes of transactions you broadcast. It cannot decrypt shielded notes.
-- **Instant Sync (off by default):** turning it on sends your primary account's **viewing key** (never a spending key) to the sync server. The operator can then see all of that account's shielded activity, including future activity, and a viewing key cannot be revoked. The server stores the key in its devtool wallet dir, plus cached balance and txids; it stores only a hash of your access token and never logs keys. Turning the toggle off deletes the server's copy. The server can run in an **AWS Nitro Enclave**: the app verifies the enclave's attestation in the browser against PCRs from a [reproducible build](./instant-sync-server/README.md#reproducible-build), then encrypts the viewing key to a key that exists only inside the enclave. In that mode the operator cannot read keys, balances or txids. A non-enclave dev server is labeled "not attested" in Settings.
-- **You trust:** your own machine, the Zcash libraries (`librustzcash`, `zcash-devtool`), the lightwalletd operator not to link your IP to your activity, and anyone you give a viewing key to (including the Instant Sync operator if enabled).
-- **Not covered yet:** network-level privacy (see next steps).
+---
 
-## Run it locally
+## Built with
 
-Prerequisites: Node 22+, Rust (stable), internet access to `testnet.zec.rocks`.
+- [zcash-devtool](https://github.com/zcash/zcash-devtool) and [librustzcash](https://github.com/zcash/librustzcash) (`zcash_client_backend`, `zcash_client_sqlite`, `zcash_keys`)
+- Rust (axum, tonic), Next.js 16, React 19, Tailwind, [zcashname-sdk](https://www.npmjs.com/package/zcashname-sdk)
+- AWS Nitro Enclaves, Node.js, Caddy, Docker
+- [NEAR Intents](https://near.org) (mainnet swap exit, experimental)
 
-```bash
-# 1. Wallet service (testnet, loopback only)
-cd engine/services/wallet-service
-WALLET_NETWORK=testnet WALLET_API_BIND=127.0.0.1:8787 WALLET_DATA_DIR=$PWD/wallet-data \
-LIGHTWALLETD_ENDPOINT=https://testnet.zec.rocks:443 cargo run --release
+## License
 
-# 2. Frontend
-cd frontend
-cp .env.example .env.local        # set NEXT_PUBLIC_WALLET_BACKEND=live
-npm install && npm run dev         # http://localhost:3000
+TBD
 
-# 3. Optional: Instant Sync server
-git clone https://github.com/zcash/zcash-devtool && (cd zcash-devtool && cargo build --release)
-cd instant-sync-server
-PORT=8795 HOST=127.0.0.1 DEVTOOL_BIN=/path/to/zcash-devtool/target/release/zcash-devtool npm start
-# add NEXT_PUBLIC_INSTANT_SYNC_URL=http://127.0.0.1:8795 to frontend/.env.local, restart the frontend,
-# then Settings → Instant Sync → On
-```
+---
 
-Open the app at `http://localhost:3000` (not `127.0.0.1`; that is the only origin the services accept). Create or unlock a wallet, fund it from the faucet panel, then send from **Send**.
-
-`NEXT_PUBLIC_WALLET_BACKEND` unset or `simulated` gives a click-through UI that never broadcasts. `NEXT_PUBLIC_*` values are read at startup; restart after changing them.
-
-## Services
-
-| Service | Directory | Listens | Role |
-|---|---|---|---|
-| Frontend | `frontend/` | `3000` | Next.js 16 UI, dashboard, `/popup` for the extension |
-| Wallet service | `engine/services/wallet-service/` | `127.0.0.1:8787` | Seed, sync, faucet proxy, quote, prove, sign, broadcast, disclosure, viewing-key export for Instant Sync |
-| Instant Sync server | `instant-sync-server/` | `8795` locally (`PORT`) | Viewing-key sync with zcash-devtool, cached state API |
-| Extension | `extension/` | — | MV3 popup that frames `localhost:3000/popup` |
-| Backend API | `backend/` | `4000` | Legacy Nest scaffold; returns empty quotes. Not needed |
-| Payment engine | `engine/` workspace | `4010` | Records requests, never broadcasts. Not used by any page |
-
-The wallet service refuses non-loopback binds, non-loopback `Host`, and any `Origin` other than `http://localhost:3000` / `http://127.0.0.1:3000`. **Never expose port 8787**: create/unlock are not behind a bearer token.
-
-## Status
-
-| Area | Status |
-|---|---|
-| Create, unlock, lock a testnet wallet | Working |
-| Shielded sync, quote, sign, broadcast | Working; outgoing shielded sends on testnet (txids above) |
-| Ironwood (NU7) notes | Received and spent; Instant Sync reports `ironwood_spendable` |
-| Faucet funding, shield / unshield, transparent opt-in | Working on testnet |
-| Pay by Zcash name | Working via `zcashname-sdk` |
-| Dedicated-account viewing-key export, read-only auditor | Working; funded-note decryption in the auditor not demonstrated |
-| Instant Sync | Working against real testnet with the funded wallet; default off |
-| Extension popup | Built; not yet loaded in Chrome. Popup storage may be partitioned from the tab (see extension README) |
-| Phrase import into the funded wallet, ZIP 311 disclosure, viewing-key revocation | Not implemented |
-| Mainnet service and NEAR Intents swap exit (`/swap`) | Exist in code but are **outside this submission** (the track is testnet only) and not exercised with funds |
-
-## Technologies
-
-- **Wallet service:** Rust, axum, tonic, `zcash_client_backend` 0.25, `zcash_client_sqlite`, `zcash_keys`, `zcash_protocol`, `zcash_address`, Argon2id + ChaCha20-Poly1305 for the seed vault
-- **Sync engine:** [zcash-devtool](https://github.com/zcash/zcash-devtool) (view-only wallets, `init-fvk` / `sync` / `balance --json` / `list-tx --json`)
-- **Instant Sync server:** Node 22, built-ins only; Docker, Caddy
-- **Frontend:** Next.js 16, React 19, framer-motion, zustand, Tailwind, `zcashname-sdk`, `qrcode`
-- **Network:** lightwalletd at `testnet.zec.rocks:443`, Fauzec testnet faucet
-
-## Design decisions
-
-- **Local signing, not browser crypto.** There is no working in-browser SDK for NU7 testnet, so proving and signing run in a loopback Rust service. The browser holds only ciphertext and a session token.
-- **Instant Sync never touches spending.** The server gets a viewing key only; balances it reports are display-only and reconciled against local sync, which wins on any mismatch.
-- **Confirmation policy matched.** The wallet service uses 1 confirmation on testnet; Instant Sync passes `--min-confirmations 1` so both report the same spendable.
-- **Fees are not hardcoded.** The wallet builds a proposal and uses the fee the Zcash client computes (ZIP 317).
-- **Disclosure uses a dedicated account.** Exporting a viewing key for account 1 keeps the primary account private.
-
-## Next 30 days
-
-1. Instant Sync in a **Nitro Enclave** with attestation checked by the client; UFVK delivered over the attested channel instead of argv.
-2. **IVK-only** Instant Sync mode (receive-only visibility).
-3. **Nym** for lightwalletd traffic, closing the IP gap in the trust note.
-4. Send and review inside the extension popup; move the vault to the wallet service so popup and tab share it.
-5. Viewing-key export to a CSV an accountant can use.
-
-## More detail
-
-- [docs/wallet.md](./docs/wallet.md): seeds, vaults, sessions, backup limits
-- [docs/shielded-payments.md](./docs/shielded-payments.md): quote, send, faucet, journal
-- [docs/selective-disclosure.md](./docs/selective-disclosure.md): viewing keys and what they do not prove
-- [docs/privacy-workspace.md](./docs/privacy-workspace.md): privacy review and route previews
-- [instant-sync-server/README.md](./instant-sync-server/README.md) and [DEPLOY.md](./instant-sync-server/DEPLOY.md)
-- [DEMO.md](./DEMO.md): 2-minute demo script
-- [frontend/](./frontend/README.md), [backend/](./backend/README.md), [engine/](./engine/README.md)
+Built by **Sweta Karar** · ArcGenesis Labs
