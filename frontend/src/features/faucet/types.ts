@@ -84,6 +84,25 @@ export type WalletAddress = {
   note?: string;
 };
 
+export type WalletHistoryKind = "received" | "sent" | "shield" | "other";
+
+export type WalletHistoryTx = {
+  txid: string;
+  minedHeight: number | null;
+  accountBalanceDeltaZatoshis: string;
+  totalReceivedZatoshis: string;
+  totalSpentZatoshis: string;
+  feePaidZatoshis: string | null;
+  kind: WalletHistoryKind | string;
+  receivedNoteCount: number;
+  sentNoteCount: number;
+};
+
+export type WalletHistory = {
+  network: string;
+  transactions: WalletHistoryTx[];
+};
+
 export type ClaimMode = "faucet" | "external";
 
 export type StoredClaim = {

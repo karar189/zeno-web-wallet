@@ -4,6 +4,8 @@ import type {
   ClaimReport,
   FaucetInfo,
   WalletAddress,
+  WalletHistory,
+  WalletHistoryTx,
   WalletReadiness,
 } from "./types";
 
@@ -181,6 +183,58 @@ export async function getWalletAddress(): Promise<WalletAddress> {
     });
   }
   return body as WalletAddress;
+}
+
+function parseHistoryTx(value: unknown): WalletHistoryTx | null {
+  if (!isRecord(value) || typeof value.txid !== "string") {
+    return null;
+  }
+  if (
+    typeof value.accountBalanceDeltaZatoshis !== "string" ||
+    typeof value.totalReceivedZatoshis !== "string" ||
+    typeof value.totalSpentZatoshis !== "string" ||
+    typeof value.kind !== "string"
+  ) {
+    return null;
+  }
+  return {
+    txid: value.txid,
+    minedHeight:
+      typeof value.minedHeight === "number" && Number.isFinite(value.minedHeight)
+        ? value.minedHeight
+        : null,
+    accountBalanceDeltaZatoshis: value.accountBalanceDeltaZatoshis,
+    totalReceivedZatoshis: value.totalReceivedZatoshis,
+    totalSpentZatoshis: value.totalSpentZatoshis,
+    feePaidZatoshis:
+      typeof value.feePaidZatoshis === "string" ? value.feePaidZatoshis : null,
+    kind: value.kind,
+    receivedNoteCount:
+      typeof value.receivedNoteCount === "number" ? value.receivedNoteCount : 0,
+    sentNoteCount: typeof value.sentNoteCount === "number" ? value.sentNoteCount : 0,
+  };
+}
+
+export async function getWalletHistory(): Promise<WalletHistory> {
+  const response = await request("/api/wallet/history", { method: "GET" }, 15000);
+  const body = await readBody(response);
+  if (!response.ok || !isRecord(body)) {
+    throw new WalletServiceError({
+      code: "history_unavailable",
+      message: messageFromBody(body, response),
+      status: response.status,
+      ambiguous: false,
+    });
+  }
+  const transactions = Array.isArray(body.transactions)
+    ? body.transactions
+        .map(parseHistoryTx)
+        .filter((row): row is WalletHistoryTx => row !== null)
+    : [];
+  return {
+    network: typeof body.network === "string" ? body.network : "test",
+    transactions,
+  };
 }
 
 export async function getFaucetInfo(): Promise<FaucetInfo> {

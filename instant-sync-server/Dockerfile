@@ -20,7 +20,7 @@ RUN apt-get update \
  && chmod 700 /data
 COPY --from=devtool /src/target/release/zcash-devtool /usr/local/bin/zcash-devtool
 WORKDIR /app
-COPY package.json server.mjs ./
+COPY package.json server.mjs sealed.mjs ./
 USER zeno
 ENV NODE_ENV=production \
     PORT=8790 \

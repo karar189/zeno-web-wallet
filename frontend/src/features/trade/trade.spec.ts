@@ -36,7 +36,7 @@ const input = {
   paySymbol: "ZEC",
   receiveBlockchain: "sol",
   receiveSymbol: "USDC",
-  consent: true,
+  consent: true as const,
 };
 
 describe("token trading", () => {
@@ -51,7 +51,7 @@ describe("token trading", () => {
 
   it("parses token units without floats", () => {
     expect(parseUnits("0.1", 8).ok && parseUnits("0.1", 8)).toMatchObject({
-      units: 10000000n,
+      units: BigInt(10000000),
     });
     expect(parseUnits("1e2", 6).ok).toBe(false);
     expect(parseUnits("0.000000001", 8).ok).toBe(false);

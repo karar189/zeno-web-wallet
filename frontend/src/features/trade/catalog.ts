@@ -168,9 +168,9 @@ export function parseUnits(
   }
   const [whole, fraction = ""] = value.split(".");
   const padded = `${fraction}${"0".repeat(decimals)}`.slice(0, decimals);
-  const scale = 10n ** BigInt(decimals);
-  const units = BigInt(whole) * scale + (padded ? BigInt(padded) : 0n);
-  if (units <= 0n) {
+  const scale = BigInt(10) ** BigInt(decimals);
+  const units = BigInt(whole) * scale + (padded ? BigInt(padded) : BigInt(0));
+  if (units <= BigInt(0)) {
     return { ok: false, reason: "Amount must be greater than zero." };
   }
   return { ok: true, units };

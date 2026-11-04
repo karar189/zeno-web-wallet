@@ -17,8 +17,8 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::faucet::{ClaimReport, FaucetError, FaucetInfo};
 use crate::wallet::{
-    AppState, DisclosureStatusReport, QuoteReport, ReadinessReport, SendExpectation, SendReport,
-    StatusReport,
+    AppState, DisclosureStatusReport, HistoryEntry, QuoteReport, ReadinessReport, SendExpectation,
+    SendReport, StatusReport,
 };
 
 pub fn router(state: AppState) -> Router {
@@ -60,6 +60,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/wallet/faucet/claim", post(faucet_claim))
         .route("/api/wallet/faucet/status/:request_id", get(faucet_status))
         .route("/api/wallet/transactions/:txid", get(transaction_status))
+        .route("/api/wallet/history", get(wallet_history))
         .route("/api/wallet/session", get(session_status))
         .route("/api/wallet/session/password", post(set_session_password))
         .route("/api/wallet/session/unlock", post(unlock_session))
@@ -96,6 +97,7 @@ fn session_guarded(path: &str) -> bool {
             | "/api/wallet/faucet/claim"
     ) || path.starts_with("/api/wallet/faucet/status/")
         || path.starts_with("/api/wallet/transactions/")
+        || path == "/api/wallet/history"
 }
 
 async fn require_unlocked(
@@ -976,6 +978,34 @@ async fn transaction_status(
         .await
         .map_err(bad_request)?;
     Ok(Json(status_json(state.chain(), txid.trim(), report)))
+}
+
+async fn wallet_history(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let entries = state
+        .history(&required_token(&headers), 50)
+        .await
+        .map_err(bad_request)?;
+    Ok(Json(json!({
+        "network": if state.chain().is_main() { "main" } else { "test" },
+        "transactions": entries.into_iter().map(history_json).collect::<Vec<_>>(),
+    })))
+}
+
+fn history_json(entry: HistoryEntry) -> Value {
+    json!({
+        "txid": entry.txid,
+        "minedHeight": entry.mined_height,
+        "accountBalanceDeltaZatoshis": entry.account_balance_delta_zatoshis,
+        "totalReceivedZatoshis": entry.total_received_zatoshis,
+        "totalSpentZatoshis": entry.total_spent_zatoshis,
+        "feePaidZatoshis": entry.fee_paid_zatoshis,
+        "kind": entry.kind,
+        "receivedNoteCount": entry.received_note_count,
+        "sentNoteCount": entry.sent_note_count,
+    })
 }
 
 fn readiness_json(chain: crate::config::Chain, report: ReadinessReport, started: Instant) -> Value {

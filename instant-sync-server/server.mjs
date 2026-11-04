@@ -6,9 +6,12 @@ import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
+import { createRequire } from "node:module";
 import path from "node:path";
 
 import { createEnclaveKey, sealState } from "./sealed.mjs";
+
+const require = createRequire(import.meta.url);
 
 // ── Config ───────────────────────────────────────────────────────────────────
 const env = process.env;
@@ -144,6 +147,67 @@ function run(account, args, timeoutMs) {
   });
 }
 
+/**
+ * zcash-devtool `list-tx --json` only returns txid + height. Read amounts from
+ * the wallet's `data.sqlite` `v_transactions` view when Node's sqlite is available.
+ */
+export function enrichTxAmounts(walletDir, txs) {
+  if (!Array.isArray(txs) || txs.length === 0) return txs;
+  const dbPath = path.join(walletDir, "data.sqlite");
+  if (!fs.existsSync(dbPath)) return txs;
+  try {
+    // Node 22+: node:sqlite. Optional — fall back to txid-only if unavailable.
+    const { DatabaseSync } = require("node:sqlite");
+    const db = new DatabaseSync(dbPath, { readOnly: true });
+    try {
+      const rows = db
+        .prepare(
+          `SELECT lower(hex(txid)) AS txid_hex,
+                  mined_height,
+                  account_balance_delta,
+                  total_received,
+                  is_shielding,
+                  pool_crossing_value
+           FROM v_transactions
+           ORDER BY mined_height DESC NULLS FIRST
+           LIMIT 100`,
+        )
+        .all();
+      const byInternal = new Map();
+      for (const row of rows) {
+        // SQLite hex() is internal byte order; reverse for display txid.
+        const hex = String(row.txid_hex || "");
+        if (hex.length !== 64) continue;
+        const display = hex.match(/.{2}/g).reverse().join("");
+        const delta = Number(row.account_balance_delta);
+        const kind =
+          row.is_shielding || row.pool_crossing_value != null
+            ? "shield"
+            : delta > 0
+              ? "received"
+              : delta < 0
+                ? "sent"
+                : "other";
+        byInternal.set(display, {
+          account_balance_delta_zatoshis: String(row.account_balance_delta),
+          total_received_zatoshis: String(row.total_received ?? "0"),
+          kind,
+          mined_height: row.mined_height ?? null,
+        });
+      }
+      return txs.map((tx) => {
+        const extra = byInternal.get(String(tx.txid).toLowerCase());
+        return extra ? { ...tx, ...extra } : tx;
+      });
+    } finally {
+      db.close();
+    }
+  } catch (error) {
+    log("history amount enrich skipped:", error.message);
+    return txs;
+  }
+}
+
 /** Parse the JSON payload from devtool stdout, tolerating log lines around it. */
 export function parseJsonOutput(stdout) {
   const text = String(stdout).trim();
@@ -194,11 +258,18 @@ async function syncAccount(a) {
     transparent_spendable: String(balance.transparent_spendable ?? "0"),
   };
   a.chainTipHeight = balance.chain_tip_height ?? null;
-  a.txs = Array.isArray(txs)
+  const listed = Array.isArray(txs)
     ? txs
         .filter((t) => t && typeof t.txid === "string")
-        .map((t) => ({ txid: t.txid, mined_height: t.mined_height ?? null }))
+        .map((t) => ({
+          txid: t.txid,
+          mined_height: t.mined_height ?? null,
+          account_balance_delta_zatoshis: null,
+          total_received_zatoshis: null,
+          kind: null,
+        }))
     : [];
+  a.txs = enrichTxAmounts(path.join(WALLETS, a.id), listed);
   a.lastSyncedAt = Date.now();
   a.lastSyncMs = ms;
   if (a.firstSyncMs == null) a.firstSyncMs = a.lastSyncedAt - a.createdAt;

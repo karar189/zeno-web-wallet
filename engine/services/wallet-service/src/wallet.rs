@@ -328,6 +328,21 @@ pub struct StatusReport {
     pub detection_available: bool,
 }
 
+/// One wallet-affecting transaction from `v_transactions`, with amounts in zatoshis.
+#[derive(Debug, Clone)]
+pub struct HistoryEntry {
+    pub txid: String,
+    pub mined_height: Option<u32>,
+    pub account_balance_delta_zatoshis: String,
+    pub total_received_zatoshis: String,
+    pub total_spent_zatoshis: String,
+    pub fee_paid_zatoshis: Option<String>,
+    /// `received` | `sent` | `shield` | `other`
+    pub kind: String,
+    pub received_note_count: u32,
+    pub sent_note_count: u32,
+}
+
 enum SendStep {
     Reply(SendReport),
     Broadcast {
@@ -1324,6 +1339,17 @@ impl AppState {
         if let Err(error) = wallet.mark_send(quote_id, state, message, Some(txids)) {
             eprintln!("Could not update the send journal: {error}");
         }
+    }
+
+    pub async fn history(&self, token: &str, limit: usize) -> Result<Vec<HistoryEntry>, String> {
+        let handle = self.wallet_handle(token).await?;
+        let wallet = handle.lock().await;
+        let account_id = wallet
+            .account_id
+            .ok_or_else(|| "Create or unlock a wallet before reading history.".to_string())?;
+        let db_path = wallet.db_path.clone();
+        drop(wallet);
+        list_wallet_history(&db_path, account_id, limit)
     }
 
     pub async fn transaction_status(&self, token: &str, txid_text: &str) -> Result<StatusReport, String> {
@@ -3515,6 +3541,108 @@ fn accept_payment_network(net: NetworkType) -> Result<(), ConversionError<&'stat
 
 fn display_txid(txid: TxId) -> String {
     txid.to_string()
+}
+
+fn list_wallet_history(
+    db_path: &Path,
+    account_id: AccountUuid,
+    limit: usize,
+) -> Result<Vec<HistoryEntry>, String> {
+    let limit = limit.clamp(1, 100);
+    let conn = Connection::open_with_flags(
+        db_path,
+        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .map_err(|error| format!("Could not open the wallet database for history: {error}"))?;
+
+    let account_uuid = account_id.expose_uuid();
+    let account_key = account_uuid.as_bytes().as_slice();
+    let mut statement = conn
+        .prepare(
+            "SELECT txid,
+                    mined_height,
+                    account_balance_delta,
+                    total_received,
+                    total_spent,
+                    fee_paid,
+                    received_note_count,
+                    sent_note_count,
+                    is_shielding,
+                    pool_crossing_value
+             FROM v_transactions
+             WHERE account_uuid = ?1
+             ORDER BY mined_height DESC NULLS FIRST, txid DESC
+             LIMIT ?2",
+        )
+        .map_err(|error| format!("Could not prepare wallet history: {error}"))?;
+
+    let rows = statement
+        .query_map(rusqlite::params![account_key, limit as i64], |row| {
+            let txid_bytes: Vec<u8> = row.get(0)?;
+            let mined_height: Option<u32> = row.get(1)?;
+            let delta: i64 = row.get(2)?;
+            let total_received: i64 = row.get(3)?;
+            let total_spent: i64 = row.get(4)?;
+            let fee_paid: Option<i64> = row.get(5)?;
+            let received_note_count: u32 = row.get(6)?;
+            let sent_note_count: u32 = row.get(7)?;
+            let is_shielding: bool = row.get(8)?;
+            let pool_crossing: Option<i64> = row.get(9)?;
+            Ok((
+                txid_bytes,
+                mined_height,
+                delta,
+                total_received,
+                total_spent,
+                fee_paid,
+                received_note_count,
+                sent_note_count,
+                is_shielding,
+                pool_crossing,
+            ))
+        })
+        .map_err(|error| format!("Could not read wallet history: {error}"))?;
+
+    let mut entries = Vec::new();
+    for row in rows {
+        let (
+            txid_bytes,
+            mined_height,
+            delta,
+            total_received,
+            total_spent,
+            fee_paid,
+            received_note_count,
+            sent_note_count,
+            is_shielding,
+            pool_crossing,
+        ) = row.map_err(|error| format!("Could not decode a history row: {error}"))?;
+        let txid_array: [u8; 32] = txid_bytes
+            .try_into()
+            .map_err(|_| "A history row had an invalid transaction id.".to_string())?;
+        let txid = TxId::from_bytes(txid_array);
+        let kind = if is_shielding || pool_crossing.is_some() {
+            "shield"
+        } else if delta > 0 {
+            "received"
+        } else if delta < 0 {
+            "sent"
+        } else {
+            "other"
+        };
+        entries.push(HistoryEntry {
+            txid: display_txid(txid),
+            mined_height,
+            account_balance_delta_zatoshis: delta.to_string(),
+            total_received_zatoshis: total_received.to_string(),
+            total_spent_zatoshis: total_spent.to_string(),
+            fee_paid_zatoshis: fee_paid.map(|value| value.to_string()),
+            kind: kind.to_string(),
+            received_note_count,
+            sent_note_count,
+        });
+    }
+    Ok(entries)
 }
 
 fn unavailable_status(txid: &str, note: &str) -> StatusReport {

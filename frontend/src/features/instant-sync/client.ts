@@ -61,7 +61,13 @@ export type InstantBalance = {
 export type InstantState = {
   status: "registering" | "syncing" | "ready" | "error";
   balance: InstantBalance | null;
-  txs: { txid: string; mined_height: number | null }[];
+  txs: {
+    txid: string;
+    mined_height: number | null;
+    account_balance_delta_zatoshis?: string | null;
+    total_received_zatoshis?: string | null;
+    kind?: string | null;
+  }[];
   chainTipHeight: number | null;
   lastSyncedAt: number | null;
   stalenessMs: number | null;
