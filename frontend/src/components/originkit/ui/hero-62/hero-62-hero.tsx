@@ -7,15 +7,15 @@ import { useEffect, useRef, useState } from "react"
 import { ZenoMark } from "@/components/brand/zeno-mark"
 import ChromaticDrift from "@/components/originkit/ui/hero-62/chromatic-drift"
 
-const T = 195 // tile size in viewBox units (1 unit = 1px at the 2400px reference width)
-const GRID_ROWS = 2 // visible tile rows; the frame is sized to this band
-const GRID_SKIP = 1 // start on the spiral row so the shorter band keeps the centerpiece
+export const T = 195 // tile size in viewBox units (1 unit = 1px at the 2400px reference width)
+export const GRID_ROWS = 2 // visible tile rows; the frame is sized to this band
+export const GRID_SKIP = 1 // start on the spiral row so the shorter band keeps the centerpiece
 // . empty  l "/" hatch  r "\" hatch  m fine mesh  v chevrons  C concentric block (drawn separately)
 const MAP = ["l.l.rm.l.rll", ".l..CCC.ll.l", "l.rl.Cml.l.l", ".l.lr.vl.l.."]
 const FILL: Record<string, string> = { l: "url(#hl)", r: "url(#hr)", m: "url(#mesh)", v: "url(#chev)" }
 
 // One SVG body, used twice: grey on the page, white as the alpha mask that lets the drift through the lines only.
-function gridSvg(stroke: string, mask: boolean, rows: number): string {
+export function gridSvg(stroke: string, mask: boolean, rows: number): string {
     const k = mask ? 2.4 : 1 // mask lines are thicker so the colour reads as solid
     let s =
         `<defs>` +

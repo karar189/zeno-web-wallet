@@ -222,7 +222,7 @@ export function LandingPage() {
         <span>Private money. Informed moves.</span>
         <span className="landing-footer-credit">
           Built for the Free Society Hackathon, India ·{" "}
-          <a href="https://github.com/karar189/zeno" target="_blank" rel="noreferrer">
+          <a href="https://github.com/karar189/zeno-web-wallet" target="_blank" rel="noreferrer">
             GitHub
           </a>
         </span>
