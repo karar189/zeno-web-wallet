@@ -6,7 +6,7 @@ import { softEase } from "@/components/motion/motion-root";
 import ChromaticDrift from "@/components/originkit/ui/hero-62/chromatic-drift";
 import { GRID_ROWS, GRID_SKIP, T, gridSvg } from "@/components/originkit/ui/hero-62/hero-62-hero";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Maximize2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Maximize2, Play } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import "./slide-deck.css";
 
@@ -388,6 +388,8 @@ function ArchitectureSlide() {
 
 /* ───────────────────────── 04 Live demo ───────────────────────── */
 
+const DEMO_VIDEO_URL = "https://youtu.be/7cVKc9kGye4";
+
 function DemoSlide() {
   return (
     <div className="sd-demo">
@@ -398,6 +400,22 @@ function DemoSlide() {
         <ScrambleText text="Live demo." duration={1100} />
       </motion.h1>
       <motion.p variants={rise}>Zcash testnet · real shielded transactions</motion.p>
+      <motion.a
+        className="sd-video"
+        href={DEMO_VIDEO_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        variants={rise}
+      >
+        <span className="sd-video-play" aria-hidden="true">
+          <Play size={14} fill="currentColor" />
+        </span>
+        <span className="sd-video-text">
+          <b>Watch the recorded demo</b>
+          <small>youtu.be/7cVKc9kGye4</small>
+        </span>
+        <ArrowUpRight size={16} aria-hidden="true" />
+      </motion.a>
     </div>
   );
 }
@@ -538,6 +556,8 @@ export function SlideDeck() {
     if (index === null) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
+      // Let Enter/Space activate a focused link or button (e.g. the demo video) instead of advancing.
+      if ((event.key === "Enter" || event.key === " ") && (event.target as HTMLElement).closest?.("a, button")) return;
       if (["ArrowRight", "ArrowDown", "PageDown", " ", "Enter"].includes(event.key)) {
         event.preventDefault();
         go(index + 1);

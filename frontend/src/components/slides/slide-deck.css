@@ -860,6 +860,64 @@
   color: var(--sd-amber);
 }
 
+/* Demo video link */
+.sd-video {
+  margin-top: 3cqw;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 1.1cqw;
+  padding: 0.9cqw 1.4cqw 0.9cqw 0.9cqw;
+  border: 1px solid var(--sd-line);
+  background: rgba(10, 10, 10, 0.8);
+  color: var(--sd-paper);
+  text-decoration: none;
+  transition: border-color 0.25s, box-shadow 0.25s, color 0.25s;
+}
+.sd-video:hover {
+  border-color: var(--sd-gold);
+  box-shadow: 0 0 2.4cqw rgba(255, 193, 74, 0.15);
+  color: var(--sd-gold);
+}
+.sd-video-play {
+  display: grid;
+  place-items: center;
+  width: 2.8cqw;
+  height: 2.8cqw;
+  background: var(--sd-gold);
+  color: #140e08;
+}
+.sd-video-play svg {
+  width: 1.1cqw;
+  height: 1.1cqw;
+  margin-left: 0.15cqw;
+}
+.sd-video-text {
+  display: grid;
+  gap: 0.35cqw;
+}
+.sd-video-text b {
+  font-family: var(--sd-display);
+  font-weight: 400;
+  font-size: 0.9cqw;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sd-video-text small {
+  font-family: var(--sd-sans);
+  font-size: 0.95cqw;
+  color: var(--sd-mute);
+}
+.sd-video > svg:last-child {
+  width: 1.2cqw;
+  height: 1.2cqw;
+  margin-left: 0.6cqw;
+}
+.slide-deck .sd-video:focus-visible {
+  outline: 2px solid var(--sd-gold);
+  outline-offset: 3px;
+}
+
 /* ── Bottom bar ─────────────────────────────────── */
 .sd-bar {
   position: absolute;
